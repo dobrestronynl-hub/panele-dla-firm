@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Firma budowlana – panel demo</title>
+<meta name="description" content="Panel demo dla firmy budowlanej: budżet i postęp budów, brygady, materiał, sprzęt, podwykonawcy i usterki. Dane przykładowe.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
+<link rel="stylesheet" href="../assets/panel.css">
+<style>
+  /* Tablica budowy: żółta, z pasem ostrzegawczym */
+  body {
+    --sign-bg: #F2C200; --sign-fg: #17191B; --sign-sub: rgba(23, 25, 27, .74);
+    --sign-band: repeating-linear-gradient(-45deg, #17191B 0 16px, #F2C200 16px 32px); --sign-band-h: 12px;
+    --accent: #1E2226; --accent-ink: #F2C200; --accent-soft: #FFF4C4; --accent-line: #7A5A00;
+  }
+  .tab[aria-selected="true"] { border-bottom-color: #17191B; }
+  .demo-flag { border-width: 1.5px; }
+
+  .week td.day, .week th.day { text-align: left; min-width: 150px; }
+  .week td.today, .week th.today { background: var(--accent-soft); }
+  .cell {
+    appearance: none; width: 100%; text-align: left; cursor: pointer; display: block;
+    padding: 6px 8px; border: 1px solid var(--line-soft); border-left: 5px solid var(--c, #9AA3AC); border-radius: 4px; background: var(--surface);
+    font-size: 13px; line-height: 1.3;
+  }
+  .cell b { font-weight: 650; display: block; }
+  .cell span { color: var(--ink-3); font-size: 12px; }
+  .cell.free { border-left-color: #D5D9DC; background: repeating-linear-gradient(-45deg, #F7F8F7 0 6px, #EFF1EF 6px 12px); color: var(--ink-3); }
+  .cell.over span { color: var(--warn); font-weight: 600; }
+  .cell:hover { border-color: #17191B; }
+  .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: 0; }
+  .stages { display: flex; flex-direction: column; gap: 8px; }
+  .stages .st { display: grid; grid-template-columns: 1fr 190px; gap: 12px; align-items: center; font-size: 14px; }
+  .site-list { display: flex; flex-direction: column; }
+  .site-list > div { padding: 10px 16px; border-bottom: 1px solid var(--line-soft); font-size: 13.5px; }
+  .site-list > div:last-child { border-bottom: 0; }
+  .site-list b { display: block; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<header class="sign">
+  <div class="sign-top">
+    <a href="../index.html">Wszystkie panele</a>
+    <span class="demo-flag">Dane przykładowe</span>
+  </div>
+  <div class="sign-inner">
+    <div>
+      <h1>Twoja firma budowlana</h1>
+      <p class="sign-sub">Budowy, brygady, materiał, sprzęt i podwykonawcy na jednym ekranie</p>
+    </div>
+    <div class="sign-meta"><strong id="sign-day"></strong><span id="sign-week"></span></div>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="Moduły panelu">
+  <div class="tabs-inner" role="tablist">
+    <button class="tab" data-tab="budowy">Budowy</button>
+    <button class="tab" data-tab="brygady">Brygady</button>
+    <button class="tab" data-tab="material">Materiał</button>
+    <button class="tab" data-tab="sprzet">Sprzęt</button>
+    <button class="tab" data-tab="podwykonawcy">Podwykonawcy i usterki</button>
+  </div>
+</nav>
+
+<main>
+  <!-- BUDOWY -->
+  <section data-panel="budowy" class="stack">
+    <div id="bud-strip"></div>
+    <div class="box">
+      <div class="box-h"><h2>Budowy w toku</h2><p>Kliknij budowę, żeby zobaczyć koszty i etapy</p></div>
+      <div class="box-b flush" id="bud-table"></div>
+    </div>
+    <div class="cols-even">
+      <div class="box">
+        <div class="box-h"><h2>Wydany budżet a postęp prac</h2><p>pasek: wydany budżet, kreska: postęp</p></div>
+        <div class="box-b"><div id="bud-bars"></div><p class="muted small" style="margin-top:12px">Pasek za kreską oznacza, że pieniądze schodzą szybciej niż idzie robota.</p></div>
+      </div>
+      <div class="box">
+        <div class="box-h"><h2>Do zafakturowania</h2><p>wykonane prace bez faktury</p></div>
+        <div class="box-b flush" id="bud-fv"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BRYGADY -->
+  <section data-panel="brygady" class="stack">
+    <div id="bry-strip"></div>
+    <div class="box">
+      <div class="box-h"><h2 id="bry-title">Plan brygad na ten tydzień</h2><p>Kliknij pole, żeby przenieść brygadę albo zmienić godziny</p></div>
+      <div class="box-b flush" id="bry-grid"></div>
+    </div>
+    <div class="cols-even">
+      <div class="box">
+        <div class="box-h"><h2>Robocizna w tym tygodniu według budów</h2></div>
+        <div class="box-b"><div id="bry-bars"></div></div>
+      </div>
+      <div class="box">
+        <div class="box-h"><h2>Brygady</h2></div>
+        <div class="box-b flush" id="bry-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MATERIAŁ -->
+  <section data-panel="material" class="stack">
+    <div id="mat-strip"></div>
+    <div class="cols">
+      <div class="box">
+        <div class="box-h"><div id="mat-filter"></div><select id="mat-site" class="inp" aria-label="Budowa"></select></div>
+        <div class="box-b flush scroll-lg" id="mat-table"></div>
+      </div>
+      <div class="box">
+        <div class="box-h"><h2>Materiał a kosztorys</h2><p>kreska: postęp prac</p></div>
+        <div class="box-b"><div id="mat-bars"></div><p class="muted small" style="margin-top:12px">Pierwsza liczba: ile kosztorysu materiału już wydano. Druga: postęp prac.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SPRZĘT -->
+  <section data-panel="sprzet" class="stack">
+    <div id="sp-strip"></div>
+    <div class="cols">
+      <div class="box">
+        <div class="box-h"><h2>Sprzęt i maszyny</h2><p>Przeglądy, UDT i wynajem w jednym miejscu</p></div>
+        <div class="box-b flush" id="sp-table"></div>
+      </div>
+      <div class="box">
+        <div class="box-h"><h2>Co jest na której budowie</h2></div>
+        <div class="box-b flush"><div id="sp-sites" class="site-list"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PODWYKONAWCY -->
+  <section data-panel="podwykonawcy" class="stack">
+    <div id="pw-strip"></div>
+    <div class="box">
+      <div class="box-h"><h2>Podwykonawcy</h2><p>Umowy, faktury, zapłaty i kaucje gwarancyjne</p></div>
+      <div class="box-b flush" id="pw-table"></div>
+    </div>
+    <div class="box">
+      <div class="box-h"><h2>Usterki w gwarancji</h2><button class="btn sm primary" id="us-new">Zgłoś usterkę</button></div>
+      <div class="box-b flush" id="us-table"></div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <span>Panel demo. Budowy, inwestorzy, firmy i osoby są wymyślone, zmiany znikają po odświeżeniu strony.</span>
+  <a href="../index.html">Zobacz pozostałe panele</a>
+</footer>
+
+<script src="../assets/panel.js"></script>
+<script>
+(function () {
+  'use strict';
+  var r = P.rng(4401);
+  var TODAY = P.today();
+  var DAY = P.workday(TODAY);
+  var MON = P.monday(DAY);
+
+  /* ---------- Dane przykładowe ---------- */
+  var STAGES = {
+    dom: ['Stan zerowy', 'Stan surowy otwarty', 'Dach i okna (stan surowy zamknięty)', 'Instalacje', 'Tynki i wylewki'],
+    hala: ['Fundamenty', 'Konstrukcja stalowa', 'Ściany i dach z płyt', 'Posadzka przemysłowa', 'Instalacje i odbiory'],
+    termo: ['Rusztowania', 'Docieplenie ścian', 'Wymiana okien', 'Dach', 'Elewacja i odbiór'],
+    remont: ['Zabezpieczenie klatek', 'Skucie tynków', 'Tynki i gładzie', 'Malowanie', 'Posadzki i balustrady'],
+    garaz: ['Fundamenty', 'Ściany', 'Dach', 'Brama i wiata', 'Porządki i odbiór']
+  };
+  var BUD = [
+    { id: 'rzg', code: 'Rzgów', name: 'Dom jednorodzinny, Rzgów', inv: 'Marta i Paweł Zielińscy', kontrakt: 685000, budzet: 589000, postep: 62, koszt: 398000, fakt: 340000, end: 75, kier: 'Robert K.', typ: 'dom', col: '#2F6FB5' },
+    { id: 'hala', code: 'Hala Tomaszów', name: 'Hala magazynowa 1 200 m², Tomaszów Maz.', inv: 'Spółka logistyczna (klient przykładowy)', kontrakt: 2950000, budzet: 2540000, postep: 38, koszt: 1120000, fakt: 885000, end: 150, kier: 'Adam W.', typ: 'hala', col: '#7A4FB0' },
+    { id: 'szk', code: 'Szkoła Ujazd', name: 'Termomodernizacja szkoły, Ujazd', inv: 'Gmina (przetarg)', kontrakt: 1240000, budzet: 1090000, postep: 85, koszt: 905000, fakt: 930000, end: 30, kier: 'Robert K.', typ: 'termo', col: '#1E8A6E' },
+    { id: 'lip', code: 'Lipowa 12', name: 'Remont klatek schodowych, Łódź', inv: 'Wspólnota mieszkaniowa ul. Lipowa 12', kontrakt: 186000, budzet: 158000, postep: 40, koszt: 92000, fakt: 55800, end: 40, kier: 'Adam W.', typ: 'remont', col: '#C2410C' },
+    { id: 'bro', code: 'Brójce', name: 'Dom w zabudowie bliźniaczej, Brójce', inv: 'Deweloper (klient przykładowy)', kontrakt: 1380000, budzet: 1190000, postep: 18, koszt: 205000, fakt: 207000, end: 260, kier: 'Paweł Z.', typ: 'dom', col: '#0E7490' },
+    { id: 'kol', code: 'Koluszki', name: 'Garaż z wiatą, Koluszki', inv: 'Jan Kowalczyk', kontrakt: 96000, budzet: 82000, postep: 95, koszt: 79000, fakt: 67200, end: 7, kier: 'Paweł Z.', typ: 'garaz', col: '#A16207' }
+  ];
+  var B = {}; BUD.forEach(function (b) {
+    B[b.id] = b;
+    var m = 0.38 + r() * 0.12, l = 0.24 + r() * 0.1, s = 0.07 + r() * 0.06;
+    b.cat = { 'Materiał': Math.round(b.koszt * m), 'Robocizna': Math.round(b.koszt * l), 'Sprzęt': Math.round(b.koszt * s) };
+    b.cat['Podwykonawcy'] = b.koszt - b.cat['Materiał'] - b.cat['Robocizna'] - b.cat['Sprzęt'];
+    b.matBudget = Math.round(b.budzet * 0.46);
+    b.endDate = P.addDays(TODAY, b.end);
+  });
+  function calc(b) {
+    var spent = b.koszt / b.budzet * 100, diff = spent - b.postep;
+    var progCost = b.koszt / (b.postep / 100), wynik = b.kontrakt - progCost;
+    var doFv = Math.max(0, Math.round(b.kontrakt * b.postep / 100 - b.fakt));
+    var st = diff <= 3 ? ['Zgodnie z planem', 'ok'] : (diff <= 10 ? ['Uwaga na koszty', 'warn'] : ['Ponad budżet', 'bad']);
+    return { spent: spent, diff: diff, progCost: progCost, wynik: wynik, marza: wynik / b.kontrakt * 100, plan: (b.kontrakt - b.budzet) / b.kontrakt * 100, doFv: doFv, st: st };
+  }
+
+  var BRYG = [
+    { id: 'mur', name: 'Murarze', lider: 'Zbigniew M.', ludzie: 5, stawka: 58 },
+    { id: 'zbr', name: 'Zbrojarze i betoniarze', lider: 'Waldemar K.', ludzie: 4, stawka: 60 },
+    { id: 'ciesl', name: 'Cieśle i dekarze', lider: 'Henryk P.', ludzie: 4, stawka: 62 },
+    { id: 'wyk', name: 'Wykończeniówka', lider: 'Sławomir T.', ludzie: 4, stawka: 55 },
+    { id: 'ogol', name: 'Ogólnobudowlana', lider: 'Dariusz L.', ludzie: 3, stawka: 52 }
+  ];
+  var PLAN = {
+    mur: ['bro', 'bro', 'bro', 'bro', 'rzg'],
+    zbr: ['hala', 'hala', 'hala', 'bro', 'bro'],
+    ciesl: ['rzg', 'rzg', 'rzg', 'kol', 'kol'],
+    wyk: ['lip', 'lip', 'szk', 'szk', 'szk'],
+    ogol: ['szk', 'kol', null, 'lip', 'lip']
+  };
+  var HOURS = { mur: [8, 8, 10, 10, 8], zbr: [10, 10, 8, 8, 8], ciesl: [8, 8, 8, 8, 8], wyk: [8, 8, 8, 8, 9], ogol: [8, 8, 0, 8, 8] };
+  var WEEK = {};
+  BRYG.forEach(function (g) { WEEK[g.id] = PLAN[g.id].map(function (b, i) { return { bud: b, h: b ? HOURS[g.id][i] : 0 }; }); });
+
+  var SUPPLIERS = { pustak: 'Hurtownia budowlana', beton: 'Betoniarnia', stal: 'Skład stali', okna: 'Producent okien', dach: 'Hurtownia dachowa', inst: 'Hurtownia instalacyjna', chem: 'Hurtownia budowlana', ocieplenie: 'Hurtownia budowlana', drewno: 'Tartak' };
+  var MAT = [
+    ['rzg', 'Tynk gipsowy maszynowy', 180, 'worków', 'chem', 6300, -12],
+    ['rzg', 'Rury PEX 16 mm i kształtki', 1, 'kpl.', 'inst', 8900, -6],
+    ['rzg', 'Wylewka anhydrytowa', 22, 'm³', 'beton', 9900, 2],
+    ['hala', 'Beton C25/30 na posadzkę', 140, 'm³', 'beton', 58800, 9],
+    ['hala', 'Stal zbrojeniowa fi 12', 6.2, 't', 'stal', 27900, -3],
+    ['hala', 'Płyta warstwowa 100 mm', 980, 'm²', 'dach', 112700, 14],
+    ['hala', 'Śruby i kotwy chemiczne', 1, 'kpl.', 'chem', 4200, -2],
+    ['szk', 'Styropian grafitowy 15 cm', 1450, 'm²', 'ocieplenie', 50750, -20],
+    ['szk', 'Klej i siatka do ociepleń', 1, 'kpl.', 'ocieplenie', 18600, -18],
+    ['szk', 'Tynk silikonowy 1,5 mm', 210, 'wiader', 'chem', 23100, 0],
+    ['lip', 'Gładź polimerowa', 60, 'worków', 'chem', 2700, -4],
+    ['lip', 'Farba lateksowa', 40, 'wiader', 'chem', 6400, 3],
+    ['bro', 'Pustak ceramiczny 25 cm', 4200, 'szt.', 'pustak', 39900, -9],
+    ['bro', 'Beton C20/25 na strop', 34, 'm³', 'beton', 13600, 1],
+    ['bro', 'Stal zbrojeniowa fi 10 i 12', 3.4, 't', 'stal', 15300, -1],
+    ['kol', 'Blachodachówka', 62, 'm²', 'dach', 3700, -15],
+    ['kol', 'Drewno konstrukcyjne na wiatę', 2.4, 'm³', 'drewno', 6200, -8]
+  ];
+  var ORDERS = MAT.map(function (m, i) {
+    var dl = P.addWorkdays(DAY, m[6]);
+    var st;
+    if (m[6] < 0) st = (i === 4 || i === 13) ? 'late' : 'ok';
+    else if (m[6] <= 1) st = 'road'; else st = (i % 2 ? 'conf' : 'ord');
+    return { id: 'o' + i, bud: m[0], mat: m[1], qty: m[2], unit: m[3], sup: SUPPLIERS[m[4]], val: m[5], delivery: dl, ordered: P.addWorkdays(dl, -P.int(r, 3, 12)), st: st };
+  });
+
+  var EQ = [
+    { n: 'Koparka gąsienicowa 14 t', own: true, at: 'bro', since: -20, insp: 46, inspType: 'przegląd' },
+    { n: 'Minikoparka 2,7 t', own: true, at: 'kol', since: -9, insp: 11, inspType: 'przegląd' },
+    { n: 'Ładowarka teleskopowa 14 m', own: false, rate: 620, rentEnd: 5, at: 'hala', since: -30, insp: 120, inspType: 'UDT' },
+    { n: 'Podnośnik nożycowy 12 m', own: false, rate: 280, rentEnd: 18, at: 'szk', since: -14, insp: 64, inspType: 'UDT' },
+    { n: 'Rusztowanie elewacyjne 600 m²', own: true, at: 'szk', since: -95, insp: 23, inspType: 'protokół montażu' },
+    { n: 'Betoniarka 250 l', own: true, at: 'rzg', since: -60, insp: 210, inspType: 'przegląd' },
+    { n: 'Zagęszczarka 90 kg', own: true, at: 'hala', since: -12, insp: 150, inspType: 'przegląd' },
+    { n: 'Agregat prądotwórczy 10 kVA', own: true, at: 'baza', since: -4, insp: -3, inspType: 'przegląd' },
+    { n: 'Kontener biurowy', own: false, rate: 25, rentEnd: 120, at: 'hala', since: -118, insp: null, inspType: '' },
+    { n: 'Samochód dostawczy (skrzynia)', own: true, at: 'baza', since: 0, insp: 27, inspType: 'przegląd i OC' },
+    { n: 'Piła do betonu', own: false, rate: 160, rentEnd: 2, at: 'lip', since: -3, insp: null, inspType: '' }
+  ];
+  EQ.forEach(function (e, i) { e.id = 'e' + i; e.sinceDate = P.addDays(TODAY, e.since); if (e.insp != null) e.inspDate = P.addDays(TODAY, e.insp); if (!e.own) e.rentEndDate = P.addDays(TODAY, e.rentEnd); });
+
+  var SUBS = [
+    { n: 'ElektroMont', who: 'Tomasz G.', zakres: 'Instalacja elektryczna', bud: 'rzg', umowa: 48000, fakt: 24000, zapl: 21600, kaucja: 10, odbior: null },
+    { n: 'HydroTerm', who: 'Marek S.', zakres: 'Wod.-kan. i ogrzewanie podłogowe', bud: 'rzg', umowa: 52000, fakt: 31200, zapl: 28080, kaucja: 10, odbior: null },
+    { n: 'Dachmistrz', who: 'Bogdan W.', zakres: 'Więźba i pokrycie dachu', bud: 'rzg', umowa: 38000, fakt: 38000, zapl: 36100, kaucja: 5, odbior: -21 },
+    { n: 'Stal-Konstrukcje', who: 'biuro', zakres: 'Konstrukcja stalowa hali', bud: 'hala', umowa: 690000, fakt: 414000, zapl: 331200, kaucja: 5, odbior: null },
+    { n: 'Posadzki Max', who: 'Andrzej P.', zakres: 'Posadzka przemysłowa', bud: 'hala', umowa: 210000, fakt: 0, zapl: 0, kaucja: 5, odbior: null },
+    { n: 'Okna Centrum', who: 'biuro', zakres: 'Wymiana okien (112 szt.)', bud: 'szk', umowa: 240000, fakt: 240000, zapl: 228000, kaucja: 5, odbior: -44 },
+    { n: 'Elewacje KD', who: 'Krzysztof D.', zakres: 'Tynk elewacyjny', bud: 'szk', umowa: 160000, fakt: 96000, zapl: 76800, kaucja: 10, odbior: null },
+    { n: 'Malar-Bud', who: 'Grzegorz B.', zakres: 'Malowanie klatek', bud: 'lip', umowa: 28000, fakt: 8400, zapl: 7560, kaucja: 10, odbior: null },
+    { n: 'ElektroMont', who: 'Tomasz G.', zakres: 'Oświetlenie garażu i wiaty', bud: 'kol', umowa: 9000, fakt: 9000, zapl: 8550, kaucja: 5, odbior: -6 }
+  ];
+  SUBS.forEach(function (s, i) {
+    s.id = 's' + i;
+    s.zatrz = Math.round(s.fakt * s.kaucja / 100);
+    s.doZapl = Math.max(0, s.fakt - s.zapl - s.zatrz);
+    if (s.odbior != null) { s.odbiorDate = P.addDays(TODAY, s.odbior); s.zwrot = P.addDays(s.odbiorDate, 30 + (i % 3) * 30); }
+  });
+  var US = [
+    { bud: 'Lipowa 12', opis: 'Rysa na tynku nad drzwiami, klatka B', kto: 'my (wykończeniówka)', zgl: -6, termin: 8, st: 'open' },
+    { bud: 'Szkoła Ujazd', opis: 'Nieszczelne okno w sali 12, przecieka przy deszczu', kto: 'Okna Centrum', zgl: -15, termin: -1, st: 'open' },
+    { bud: 'Dom Andrespol (oddany w zeszłym roku)', opis: 'Przeciek przy kominie po ulewie', kto: 'Dachmistrz', zgl: -10, termin: 4, st: 'open' },
+    { bud: 'Dom Andrespol (oddany w zeszłym roku)', opis: 'Pęknięta płytka na tarasie', kto: 'my (ogólnobudowlana)', zgl: -40, termin: -12, st: 'done' },
+    { bud: 'Rzgów', opis: 'Brak protokołu z próby szczelności instalacji', kto: 'HydroTerm', zgl: -3, termin: 11, st: 'open' }
+  ];
+  US.forEach(function (u, i) { u.id = 'u' + i; u.zglDate = P.addDays(TODAY, u.zgl); u.terminDate = P.addDays(TODAY, u.termin); });
+
+  /* ---------- Nagłówek ---------- */
+  P.$('#sign-day').textContent = P.dayTitle(DAY);
+  P.$('#sign-week').textContent = 'tydzień ' + P.d(MON) + '–' + P.d(P.addDays(MON, 4));
+
+  function siteCell(id) { var b = B[id]; return b ? '<span class="nowrap"><span class="sw" style="background:' + b.col + '"></span>' + P.esc(b.code) + '</span>' : '<span class="muted">baza</span>'; }
+
+  /* ---------- BUDOWY ---------- */
+  P.views.budowy = function () {
+    var k = 0, f = 0, w = 0, fv = 0, bad = 0;
+    BUD.forEach(function (b) { var c = calc(b); k += b.kontrakt; f += b.fakt; w += c.wynik; fv += c.doFv; if (c.st[1] !== 'ok') bad++; });
+    P.strip(P.$('#bud-strip'), [
+      { label: 'Budowy w toku', value: BUD.length, note: 'kontrakty za ' + P.zl(k) },
+      { label: 'Zafakturowano', value: P.zl(f), note: P.num(f / k * 100) + '% wartości kontraktów' },
+      { label: 'Do zafakturowania', value: P.zl(fv), note: 'za prace już wykonane', tone: fv ? 'warn' : '' },
+      { label: 'Prognozowany wynik', value: P.zl(w), note: 'jeśli koszty pójdą jak dotąd', tone: w < 0 ? 'bad' : '' },
+      { label: 'Budowy do sprawdzenia', value: bad, note: 'koszty szybsze niż postęp', tone: bad ? 'bad' : 'ok' }
+    ]);
+    P.table(P.$('#bud-table'), [
+      { key: 'name', label: 'Budowa', html: function (b) { return '<span class="sw" style="background:' + b.col + '"></span><b>' + P.esc(b.name) + '</b><span class="sub">' + P.esc(b.inv) + ', kierownik ' + P.esc(b.kier) + '</span>'; } },
+      { key: 'kontrakt', label: 'Kontrakt', num: 1, html: function (b) { return P.zl(b.kontrakt); } },
+      { key: 'postep', label: 'Postęp prac', html: function (b) { return P.prog(b.postep); } },
+      { key: 'spent', label: 'Wydany budżet', val: function (b) { return calc(b).spent; }, html: function (b) { var c = calc(b); return P.prog(c.spent, c.st[1]); } },
+      { key: 'fakt', label: 'Zafakturowano', num: 1, html: function (b) { return P.zl(b.fakt) + '<span class="sub">' + P.num(b.fakt / b.kontrakt * 100) + '% kontraktu</span>'; } },
+      { key: 'wynik', label: 'Prognoza wyniku', num: 1, val: function (b) { return calc(b).wynik; }, html: function (b) { var c = calc(b); return '<span style="color:' + (c.wynik < 0 ? 'var(--bad)' : 'inherit') + '">' + P.zl(c.wynik) + '</span><span class="sub">' + P.num(c.marza, 1) + '% (plan ' + P.num(c.plan, 1) + '%)</span>'; } },
+      { key: 'st', label: 'Status', val: function (b) { return -calc(b).diff; }, html: function (b) { var c = calc(b); return P.chip(c.st[0], c.st[1]); } },
+      { key: 'end', label: 'Oddanie', val: function (b) { return b.end; }, html: function (b) { return P.d(b.endDate) + '<span class="sub">' + P.rel(b.endDate) + '</span>'; } }
+    ], { rows: BUD, sortKey: 'st', onRow: openSite });
+    P.bars(P.$('#bud-bars'), BUD.map(function (b) { var c = calc(b); return { label: b.code, value: c.spent, mark: b.postep, markTitle: 'postęp ' + b.postep + '%', text: P.num(c.spent) + '% / ' + b.postep + '%', tone: c.st[1] === 'ok' ? 'ok' : c.st[1] }; }), { max: 100 });
+    P.table(P.$('#bud-fv'), [
+      { key: 'code', label: 'Budowa', html: function (b) { return siteCell(b.id); } },
+      { key: 'w', label: 'Wykonane', num: 1, val: function (b) { return b.kontrakt * b.postep / 100; }, html: function (b) { return P.zl(Math.round(b.kontrakt * b.postep / 100)); } },
+      { key: 'fakt', label: 'Zafakturowane', num: 1, html: function (b) { return P.zl(b.fakt); } },
+      { key: 'fv', label: 'Do faktury', num: 1, val: function (b) { return calc(b).doFv; }, html: function (b) { var v = calc(b).doFv; return v ? '<b>' + P.zl(v) + '</b>' : '<span class="muted">–</span>'; } }
+    ], { rows: BUD, sortKey: 'fv', sortDir: -1 });
+  };
+  function openSite(b) {
+    var c = calc(b);
+    var stages = STAGES[b.typ].map(function (n, i) {
+      var p = Math.max(0, Math.min(100, (b.postep - 20 * i) / 20 * 100));
+      return '<div class="st"><span>' + P.esc(n) + '</span>' + P.prog(p, p >= 100 ? 'ok' : '') + '</div>';
+    }).join('');
+    var body = '<div class="cols-even"><div><dl class="kv">' +
+      '<dt>Inwestor</dt><dd>' + P.esc(b.inv) + '</dd><dt>Kierownik</dt><dd>' + P.esc(b.kier) + '</dd>' +
+      '<dt>Kontrakt</dt><dd>' + P.zl(b.kontrakt) + '</dd><dt>Budżet kosztów</dt><dd>' + P.zl(b.budzet) + ' (marża plan ' + P.num(c.plan, 1) + '%)</dd>' +
+      '<dt>Koszty do dziś</dt><dd>' + P.zl(b.koszt) + ' (' + P.num(c.spent) + '% budżetu)</dd><dt>Postęp prac</dt><dd>' + b.postep + '%</dd>' +
+      '<dt>Prognoza kosztów</dt><dd>' + P.zl(Math.round(c.progCost)) + '</dd><dt>Prognoza wyniku</dt><dd><b style="color:' + (c.wynik < 0 ? 'var(--bad)' : 'inherit') + '">' + P.zl(Math.round(c.wynik)) + '</b> (' + P.num(c.marza, 1) + '%)</dd>' +
+      '<dt>Do zafakturowania</dt><dd>' + (c.doFv ? '<b>' + P.zl(c.doFv) + '</b>' : 'nic, faktury na bieżąco') + '</dd>' +
+      '<dt>Oddanie</dt><dd>' + P.dy(b.endDate) + ' (' + P.rel(b.endDate) + ')</dd></dl></div>' +
+      '<div><h3 style="font-size:15px;margin-bottom:10px">Koszty według rodzaju</h3><div id="m-cat"></div>' +
+      '<h3 style="font-size:15px;margin:18px 0 10px">Etapy</h3><div class="stages">' + stages + '</div></div></div>';
+    P.modal({ title: b.name, sub: P.chip(c.st[0], c.st[1]), body: body, wide: true, actions: [{ label: 'Zamknij', ghost: true }],
+      onOpen: function (d) { P.bars(P.$('#m-cat', d), Object.keys(b.cat).map(function (k) { return { label: k, value: b.cat[k], text: P.zl(b.cat[k]) }; })); } });
+  }
+
+  /* ---------- BRYGADY ---------- */
+  function dayDate(i) { return P.addDays(MON, i); }
+  P.views.brygady = function () {
+    var hrs = 0, cost = 0, over = 0, free = 0, perSite = {};
+    BRYG.forEach(function (g) { WEEK[g.id].forEach(function (c) {
+      if (!c.bud) { free++; return; }
+      var h = c.h * g.ludzie; hrs += h; cost += h * g.stawka; over += Math.max(0, c.h - 8) * g.ludzie;
+      perSite[c.bud] = (perSite[c.bud] || 0) + h * g.stawka;
+    }); });
+    P.strip(P.$('#bry-strip'), [
+      { label: 'Roboczogodziny w tygodniu', value: P.num(hrs), note: BRYG.reduce(function (s, g) { return s + g.ludzie; }, 0) + ' osób w 5 brygadach' },
+      { label: 'Koszt robocizny', value: P.zl(cost), note: 'według stawek brygad' },
+      { label: 'Nadgodziny', value: P.num(over) + ' h', note: 'ponad 8 h dziennie', tone: over ? 'warn' : '' },
+      { label: 'Wolne dni brygad', value: free, note: free ? 'do obsadzenia' : 'wszyscy mają pracę', tone: free ? 'warn' : 'ok' }
+    ]);
+    var di = P.days(MON, DAY);
+    var head = '<tr><th>Brygada</th>' + [0, 1, 2, 3, 4].map(function (i) { var d = dayDate(i); return '<th class="day' + (i === di ? ' today' : '') + '">' + P.dow(d).charAt(0).toUpperCase() + P.dow(d).slice(1) + ' ' + P.d(d) + (i === di ? ' ' + P.chip('dziś', 'acc') : '') + '</th>'; }).join('') + '</tr>';
+    var body = BRYG.map(function (g) {
+      return '<tr><td><b>' + g.name + '</b><span class="sub">' + g.lider + ', ' + g.ludzie + ' os.</span></td>' + WEEK[g.id].map(function (c, i) {
+        var b = B[c.bud];
+        var inner = b ? '<b>' + P.esc(b.code) + '</b><span>' + c.h + ' h × ' + g.ludzie + ' os.' + (c.h > 8 ? ', nadgodziny' : '') + '</span>' : '<b>Wolne</b><span>do obsadzenia</span>';
+        return '<td class="day' + (i === di ? ' today' : '') + '"><button class="cell' + (b ? '' : ' free') + (c.h > 8 ? ' over' : '') + '" style="--c:' + (b ? b.col : '#D5D9DC') + '" data-g="' + g.id + '" data-i="' + i + '">' + inner + '</button></td>';
+      }).join('') + '</tr>';
+    }).join('');
+    P.$('#bry-grid').innerHTML = '<div class="tbl-wrap"><table class="tbl week"><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div>';
+    P.$$('#bry-grid .cell').forEach(function (bt) { bt.onclick = function () { editCell(bt.getAttribute('data-g'), +bt.getAttribute('data-i')); }; });
+    P.bars(P.$('#bry-bars'), BUD.filter(function (b) { return perSite[b.id]; }).map(function (b) { return { label: b.code, value: perSite[b.id], text: P.zl(perSite[b.id]) }; }).sort(function (a, b) { return b.value - a.value; }));
+    P.table(P.$('#bry-list'), [
+      { key: 'name', label: 'Brygada', html: function (g) { return '<b>' + g.name + '</b><span class="sub">lider ' + g.lider + '</span>'; } },
+      { key: 'ludzie', label: 'Osób', num: 1 },
+      { key: 'stawka', label: 'Stawka', num: 1, html: function (g) { return g.stawka + ' zł/h'; } },
+      { key: 'h', label: 'Godziny w tygodniu', num: 1, val: function (g) { return WEEK[g.id].reduce(function (s, c) { return s + c.h * g.ludzie; }, 0); }, html: function (g) { return P.num(WEEK[g.id].reduce(function (s, c) { return s + c.h * g.ludzie; }, 0)); } }
+    ], { rows: BRYG });
+  };
+  function editCell(gid, i) {
+    var g = BRYG.filter(function (x) { return x.id === gid; })[0], c = WEEK[gid][i], d = dayDate(i);
+    var body = '<div class="form-grid">' +
+      '<label class="field full"><span>Budowa</span><select id="e-b">' + P.options([{ v: '', l: 'Wolne (baza)' }].concat(BUD.map(function (b) { return { v: b.id, l: b.name }; })), c.bud || '') + '</select></label>' +
+      '<label class="field"><span>Godziny na osobę</span><select id="e-h">' + P.options([6, 8, 9, 10, 12].map(function (h) { return { v: h, l: h + ' h' }; }), c.h || 8) + '</select></label>' +
+      '<label class="check" style="align-self:end;padding-bottom:8px"><input type="checkbox" id="e-all"> cały tydzień od tego dnia</label></div>';
+    P.modal({ title: g.name + ', ' + P.dow(d) + ' ' + P.d(d), sub: g.lider + ', ' + g.ludzie + ' osób, ' + g.stawka + ' zł/h', body: body, actions: [
+      { label: 'Anuluj', ghost: true },
+      { label: 'Zapisz plan', primary: true, onClick: function (close, dlg) {
+        var bud = P.$('#e-b', dlg).value || null, h = bud ? +P.$('#e-h', dlg).value : 0, all = P.$('#e-all', dlg).checked;
+        for (var j = i; j < (all ? 5 : i + 1); j++) WEEK[gid][j] = { bud: bud, h: h };
+        close(); P.toast(bud ? g.name + ': ' + B[bud].code + (all ? ' do piątku' : ', ' + P.dow(d)) : g.name + ': wolne'); P.views.brygady();
+      } }
+    ] });
+  }
+
+  /* ---------- MATERIAŁ ---------- */
+  var matFilter = 'all', matSite = 'all';
+  function orderStatus(o) {
+    if (o.st === 'ok') return P.chip('Dostarczone ' + P.d(o.delivery), 'ok');
+    if (o.st === 'late') return P.chip('Opóźnione ' + P.days(o.delivery, TODAY) + ' dni', 'bad');
+    if (o.st === 'road') return P.chip('W drodze, ' + P.rel(o.delivery), 'info');
+    if (o.st === 'conf') return P.chip('Potwierdzone na ' + P.d(o.delivery), 'acc');
+    return P.chip('Zamówione, czeka na potwierdzenie', 'warn');
+  }
+  P.views.material = function () {
+    var month = ORDERS.filter(function (o) { return P.days(o.ordered, TODAY) <= 31; }).reduce(function (s, o) { return s + o.val; }, 0);
+    var toCome = ORDERS.filter(function (o) { return o.st !== 'ok'; });
+    var late = ORDERS.filter(function (o) { return o.st === 'late'; });
+    var week = toCome.filter(function (o) { var n = P.days(TODAY, o.delivery); return n >= 0 && n <= 7; });
+    P.strip(P.$('#mat-strip'), [
+      { label: 'Zamówienia z ostatnich 30 dni', value: P.zl(month), note: P.n(ORDERS.length, 'pozycja', 'pozycje', 'pozycji') },
+      { label: 'Do odbioru', value: toCome.length, note: P.zl(toCome.reduce(function (s, o) { return s + o.val; }, 0)) },
+      { label: 'Dostawy w tym tygodniu', value: week.length, note: 'ktoś musi je przyjąć na budowie' },
+      { label: 'Opóźnione dostawy', value: late.length, note: late.map(function (o) { return B[o.bud].code; }).join(', ') || 'brak', tone: late.length ? 'bad' : 'ok' }
+    ]);
+    P.seg(P.$('#mat-filter'), [{ v: 'all', l: 'Wszystkie' }, { v: 'open', l: 'Do odbioru' }, { v: 'late', l: 'Opóźnione' }, { v: 'ok', l: 'Dostarczone' }], matFilter, function (v) { matFilter = v; P.views.material(); });
+    var sel = P.$('#mat-site');
+    sel.innerHTML = P.options([{ v: 'all', l: 'Wszystkie budowy' }].concat(BUD.map(function (b) { return { v: b.id, l: b.code }; })), matSite);
+    sel.onchange = function () { matSite = sel.value; P.views.material(); };
+    var rows = ORDERS.filter(function (o) {
+      if (matSite !== 'all' && o.bud !== matSite) return false;
+      if (matFilter === 'open') return o.st !== 'ok';
+      if (matFilter === 'late') return o.st === 'late';
+      if (matFilter === 'ok') return o.st === 'ok';
+      return true;
+    });
+    P.table(P.$('#mat-table'), [
+      { key: 'mat', label: 'Materiał', html: function (o) { return '<b>' + P.esc(o.mat) + '</b><span class="sub">' + P.num(o.qty, o.qty % 1 ? 1 : 0) + ' ' + o.unit + ', ' + P.esc(o.sup) + '</span>'; } },
+      { key: 'bud', label: 'Budowa', val: function (o) { return B[o.bud].code; }, html: function (o) { return siteCell(o.bud); } },
+      { key: 'val', label: 'Wartość', num: 1, html: function (o) { return P.zl(o.val); } },
+      { key: 'delivery', label: 'Dostawa', val: function (o) { return +o.delivery; }, html: function (o) { return P.d(o.delivery) + '<span class="sub">zam. ' + P.d(o.ordered) + '</span>'; } },
+      { key: 'st', label: 'Status', val: function (o) { return { late: 0, road: 1, ord: 2, conf: 3, ok: 4 }[o.st]; }, html: orderStatus },
+      { key: 'a', label: '', sort: false, html: function (o) { return o.st === 'ok' ? '' : '<button class="btn sm" data-rcv="' + o.id + '">Przyjęto</button>'; } }
+    ], { rows: rows, sortKey: 'st', empty: 'Brak zamówień w tym widoku.' });
+    P.$$('[data-rcv]').forEach(function (bt) { bt.onclick = function () {
+      var o = ORDERS.filter(function (x) { return x.id === bt.getAttribute('data-rcv'); })[0];
+      o.st = 'ok'; o.delivery = TODAY; P.toast('Dostawa przyjęta: ' + o.mat + ' (' + B[o.bud].code + ')'); P.views.material();
+    }; });
+    P.bars(P.$('#mat-bars'), BUD.map(function (b) {
+      var p = b.cat['Materiał'] / b.matBudget * 100, tone = p - b.postep > 10 ? 'bad' : (p - b.postep > 3 ? 'warn' : 'ok');
+      return { label: b.code, value: p, mark: b.postep, markTitle: 'postęp ' + b.postep + '%', text: P.num(p) + '% / ' + b.postep + '%', tone: tone };
+    }), { max: 100 });
+  };
+
+  /* ---------- SPRZĘT ---------- */
+  function inspChip(e) {
+    if (e.insp == null) return '<span class="muted">nie dotyczy</span>';
+    var n = P.days(TODAY, e.inspDate), t = e.inspType + ' do ' + P.d(e.inspDate);
+    if (n < 0) return P.chip(e.inspType + ' po terminie ' + (-n) + ' dni', 'bad');
+    if (n <= 14) return P.chip(t + ' (' + P.rel(e.inspDate) + ')', 'bad');
+    if (n <= 30) return P.chip(t + ' (' + P.rel(e.inspDate) + ')', 'warn');
+    return '<span class="small">' + P.esc(t) + '</span>';
+  }
+  P.views.sprzet = function () {
+    var onSite = EQ.filter(function (e) { return e.at !== 'baza'; }).length;
+    var insp = EQ.filter(function (e) { return e.insp != null && P.days(TODAY, e.inspDate) <= 30; });
+    var rent = EQ.filter(function (e) { return !e.own; });
+    var ret = rent.filter(function (e) { return P.days(TODAY, e.rentEndDate) <= 7; });
+    P.strip(P.$('#sp-strip'), [
+      { label: 'Na budowach', value: onSite + ' z ' + EQ.length, note: (EQ.length - onSite) + ' w bazie' },
+      { label: 'Przeglądy i UDT w 30 dni', value: insp.length, note: insp.filter(function (e) { return P.days(TODAY, e.inspDate) < 0; }).length + ' po terminie', tone: insp.length ? 'bad' : 'ok' },
+      { label: 'Wynajem miesięcznie', value: P.zl(rent.reduce(function (s, e) { return s + e.rate * 30; }, 0)), note: P.n(rent.length - 1, 'maszyna', 'maszyny', 'maszyn') + ' i kontener' },
+      { label: 'Zwroty w 7 dni', value: ret.length, note: ret.map(function (e) { return e.n.split(' ')[0]; }).join(', ') || 'brak', tone: ret.length ? 'warn' : '' }
+    ]);
+    P.table(P.$('#sp-table'), [
+      { key: 'n', label: 'Sprzęt', html: function (e) { return '<b>' + P.esc(e.n) + '</b><span class="sub">' + (e.own ? 'własny' : 'wynajem ' + P.zl(e.rate) + '/dzień') + '</span>'; } },
+      { key: 'at', label: 'Gdzie jest', val: function (e) { return e.at; }, html: function (e) { return siteCell(e.at) + '<span class="sub">od ' + P.d(e.sinceDate) + '</span>'; } },
+      { key: 'insp', label: 'Przegląd / UDT', val: function (e) { return e.insp == null ? 9999 : e.insp; }, html: inspChip },
+      { key: 'rent', label: 'Zwrot', val: function (e) { return e.own ? 9999 : e.rentEnd; }, html: function (e) { if (e.own) return '<span class="muted">–</span>'; var n = P.days(TODAY, e.rentEndDate); return n <= 7 ? P.chip(P.d(e.rentEndDate) + ', ' + P.rel(e.rentEndDate), 'warn') : P.d(e.rentEndDate); } },
+      { key: 'a', label: '', sort: false, html: function (e) { return '<button class="btn sm" data-mv="' + e.id + '">Przenieś</button>'; } }
+    ], { rows: EQ, sortKey: 'insp' });
+    P.$$('[data-mv]').forEach(function (bt) { bt.onclick = function () {
+      var e = EQ.filter(function (x) { return x.id === bt.getAttribute('data-mv'); })[0];
+      P.modal({ title: 'Przenieś: ' + e.n, body: '<label class="field"><span>Dokąd</span><select id="mv">' + P.options([{ v: 'baza', l: 'Baza' }].concat(BUD.map(function (b) { return { v: b.id, l: b.name }; })), e.at) + '</select></label>', actions: [
+        { label: 'Anuluj', ghost: true },
+        { label: 'Przenieś', primary: true, onClick: function (close, d) { e.at = P.$('#mv', d).value; e.sinceDate = TODAY; close(); P.toast(e.n + ': ' + (B[e.at] ? B[e.at].code : 'baza')); P.views.sprzet(); } }
+      ] });
+    }; });
+    P.$('#sp-sites').innerHTML = BUD.concat([{ id: 'baza', code: 'Baza' }]).map(function (b) {
+      var list = EQ.filter(function (e) { return e.at === b.id; });
+      return '<div><b>' + (b.col ? '<span class="sw" style="background:' + b.col + '"></span>' : '') + P.esc(b.code) + '</b>' + (list.length ? list.map(function (e) { return P.esc(e.n); }).join(', ') : '<span class="muted">nic</span>') + '</div>';
+    }).join('');
+  };
+
+  /* ---------- PODWYKONAWCY ---------- */
+  P.views.podwykonawcy = function () {
+    var doZ = SUBS.reduce(function (s, x) { return s + x.doZapl; }, 0), zat = SUBS.reduce(function (s, x) { return s + x.zatrz; }, 0);
+    var z90 = SUBS.filter(function (x) { return x.zwrot && P.days(TODAY, x.zwrot) <= 90; });
+    var open = US.filter(function (u) { return u.st === 'open'; }), lateU = open.filter(function (u) { return u.terminDate < TODAY; });
+    P.strip(P.$('#pw-strip'), [
+      { label: 'Do zapłaty podwykonawcom', value: P.zl(doZ), note: P.n(SUBS.filter(function (x) { return x.doZapl; }).length, 'faktura', 'faktury', 'faktur') },
+      { label: 'Kaucje zatrzymane', value: P.zl(zat), note: 'zabezpieczenie na usterki' },
+      { label: 'Kaucje do zwrotu w 90 dni', value: P.zl(z90.reduce(function (s, x) { return s + x.zatrz; }, 0)), note: P.n(z90.length, 'umowa', 'umowy', 'umów') + ' po odbiorze' },
+      { label: 'Otwarte usterki', value: open.length, note: lateU.length + ' po terminie naprawy', tone: lateU.length ? 'bad' : (open.length ? 'warn' : 'ok') }
+    ]);
+    P.table(P.$('#pw-table'), [
+      { key: 'n', label: 'Podwykonawca', html: function (s) { return '<b>' + P.esc(s.n) + '</b><span class="sub">' + P.esc(s.zakres) + ', ' + P.esc(s.who) + '</span>'; } },
+      { key: 'bud', label: 'Budowa', val: function (s) { return B[s.bud].code; }, html: function (s) { return siteCell(s.bud); } },
+      { key: 'umowa', label: 'Umowa', num: 1, html: function (s) { return P.zl(s.umowa); } },
+      { key: 'fakt', label: 'Zafakturowano', num: 1, html: function (s) { return P.zl(s.fakt) + '<span class="sub">' + P.num(s.fakt / s.umowa * 100) + '% umowy</span>'; } },
+      { key: 'doZapl', label: 'Do zapłaty', num: 1, html: function (s) { return s.doZapl ? '<b>' + P.zl(s.doZapl) + '</b>' : '<span class="muted">–</span>'; } },
+      { key: 'zatrz', label: 'Kaucja', num: 1, html: function (s) { return P.zl(s.zatrz) + '<span class="sub">' + s.kaucja + '% z faktur</span>'; } },
+      { key: 'odb', label: 'Odbiór i zwrot kaucji', val: function (s) { return s.zwrot ? +s.zwrot : 9e15; }, html: function (s) { return s.odbiorDate ? P.chip('Odebrane ' + P.d(s.odbiorDate), 'ok') + '<span class="sub">zwrot kaucji ' + P.d(s.zwrot) + '</span>' : P.chip('W trakcie prac', ''); } },
+      { key: 'a', label: '', sort: false, html: function (s) { return s.doZapl ? '<button class="btn sm" data-pay="' + s.id + '">Zapłacone</button>' : ''; } }
+    ], { rows: SUBS, sortKey: 'doZapl', sortDir: -1 });
+    P.$$('[data-pay]').forEach(function (bt) { bt.onclick = function () { var s = SUBS.filter(function (x) { return x.id === bt.getAttribute('data-pay'); })[0]; P.toast('Zapłacono ' + s.n + ': ' + P.zl(s.doZapl)); s.zapl += s.doZapl; s.doZapl = 0; P.views.podwykonawcy(); }; });
+    P.table(P.$('#us-table'), [
+      { key: 'opis', label: 'Usterka', html: function (u) { return '<b>' + P.esc(u.opis) + '</b><span class="sub">' + P.esc(u.bud) + '</span>'; } },
+      { key: 'kto', label: 'Kto usuwa' },
+      { key: 'zgl', label: 'Zgłoszona', val: function (u) { return +u.zglDate; }, html: function (u) { return P.d(u.zglDate); } },
+      { key: 'termin', label: 'Termin naprawy', val: function (u) { return +u.terminDate; }, html: function (u) { return P.d(u.terminDate) + '<span class="sub">' + P.rel(u.terminDate) + '</span>'; } },
+      { key: 'st', label: 'Status', val: function (u) { return u.st === 'done' ? 2 : (u.terminDate < TODAY ? 0 : 1); }, html: function (u) { return u.st === 'done' ? P.chip('Usunięta', 'ok') : (u.terminDate < TODAY ? P.chip('Po terminie', 'bad') : P.chip('Otwarta', 'warn')); } },
+      { key: 'a', label: '', sort: false, html: function (u) { return u.st === 'done' ? '' : '<button class="btn sm" data-fix="' + u.id + '">Usunięta</button>'; } }
+    ], { rows: US, sortKey: 'st' });
+    P.$$('[data-fix]').forEach(function (bt) { bt.onclick = function () { var u = US.filter(function (x) { return x.id === bt.getAttribute('data-fix'); })[0]; u.st = 'done'; P.toast('Usterka zamknięta: ' + u.opis); P.views.podwykonawcy(); }; });
+  };
+  P.$('#us-new').addEventListener('click', function () {
+    var body = '<div class="form-grid">' +
+      '<label class="field full"><span>Budowa</span><select id="u-b">' + P.options(BUD.map(function (b) { return { v: b.code, l: b.name }; }).concat([{ v: 'Dom Andrespol (oddany w zeszłym roku)', l: 'Dom Andrespol (oddany w zeszłym roku)' }]), BUD[0].code) + '</select></label>' +
+      '<label class="field full"><span>Co jest nie tak</span><input id="u-o" maxlength="120" placeholder="Np. odpada listwa przypodłogowa w salonie"></label>' +
+      '<label class="field"><span>Kto usuwa</span><select id="u-k">' + P.options(['my (ogólnobudowlana)', 'my (wykończeniówka)'].concat(SUBS.map(function (s) { return s.n; }).filter(function (v, i, a) { return a.indexOf(v) === i; })).map(function (v) { return { v: v, l: v }; }), '') + '</select></label>' +
+      '<label class="field"><span>Termin naprawy (dni)</span><input id="u-t" type="number" min="1" max="90" value="14"></label>' +
+      '<p class="full small" id="u-err" style="color:var(--bad)"></p></div>';
+    P.modal({ title: 'Zgłoś usterkę', body: body, actions: [
+      { label: 'Anuluj', ghost: true },
+      { label: 'Zapisz usterkę', primary: true, onClick: function (close, d) {
+        var o = P.$('#u-o', d).value.trim(), t = +P.$('#u-t', d).value;
+        if (!o) { P.$('#u-err', d).textContent = 'Opisz usterkę, żeby wykonawca wiedział, co naprawić.'; return; }
+        if (!(t >= 1 && t <= 90)) { P.$('#u-err', d).textContent = 'Termin naprawy to od 1 do 90 dni.'; return; }
+        US.unshift({ id: 'u' + Date.now(), bud: P.$('#u-b', d).value, opis: o, kto: P.$('#u-k', d).value, zglDate: TODAY, terminDate: P.addDays(TODAY, t), st: 'open' });
+        close(); P.toast('Usterka zapisana, termin ' + P.d(P.addDays(TODAY, t))); P.views.podwykonawcy();
+      } }
+    ] });
+  });
+
+  P.initTabs();
+})();
+</script>
+</body>
+</html>

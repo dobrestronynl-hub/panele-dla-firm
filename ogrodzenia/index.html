@@ -1,0 +1,678 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Firma ogrodzeniowa – panel demo</title>
+<meta name="description" content="Panel demo dla firmy ogrodzeniowej: zapytania i pomiary, kalkulator wyceny z rysunkiem, kalendarz montaży, materiał, zaliczki i płatności. Dane przykładowe.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
+<link rel="stylesheet" href="../assets/panel.css">
+<style>
+  /* Grafit RAL 7016 z rysunkiem siatki panelu ogrodzeniowego */
+  body {
+    --sign-bg: #383E42; --sign-fg: #EEF1F3; --sign-sub: rgba(238, 241, 243, .74);
+    --sign-pattern: linear-gradient(90deg, rgba(255, 255, 255, .075) 2px, transparent 2px), linear-gradient(0deg, rgba(255, 255, 255, .075) 2px, transparent 2px);
+    --sign-band: linear-gradient(#DCE1E5, #9AA3AA); --sign-band-h: 8px;
+    --accent: #245C43; --accent-ink: #FFFFFF; --accent-soft: #E1EEE6; --accent-line: #245C43;
+  }
+  .sign { background-size: 22px 100%, 100% 58px; }
+
+  /* Lejek zapytań */
+  .kanban-wrap { overflow-x: auto; padding-bottom: 4px; }
+  .kanban { display: grid; grid-template-columns: repeat(6, minmax(205px, 1fr)); gap: 10px; align-items: start; }
+  .kcol { background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-box); }
+  .kcol-h { padding: 10px 12px; border-bottom: 1px solid var(--line-soft); }
+  .kcol-h b { font-size: 14.5px; }
+  .kcol-h div { font-size: 12.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  .kcards { padding: 8px; display: flex; flex-direction: column; gap: 6px; min-height: 60px; }
+  .kcard {
+    appearance: none; text-align: left; cursor: pointer; width: 100%;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 5px; padding: 8px 10px; font-size: 13px; line-height: 1.35;
+  }
+  .kcard:hover { border-color: var(--accent-line); }
+  .kcard b { display: block; font-size: 14px; }
+  .kcard .v { font-weight: 650; font-variant-numeric: tabular-nums; }
+  .kcard .when { display: block; margin-top: 4px; color: var(--ink-2); }
+
+  /* Kalkulator */
+  .fence-svg { width: 100%; height: auto; display: block; }
+  .calc-sum td { font-size: 14px; }
+  .calc-sum tr.total td { font-size: 17px; font-weight: 750; border-top: 2px solid var(--ink); }
+  details.cennik summary { cursor: pointer; font-weight: 600; color: var(--accent-line); font-size: 13.5px; }
+  .print-only { display: none; }
+
+  /* Kalendarz montaży */
+  .cal { display: grid; grid-template-columns: 150px minmax(0, 1fr); border: 1px solid var(--line); border-radius: var(--r-box); background: var(--surface); overflow: hidden; }
+  .cal-days, .lane { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; padding: 6px; }
+  .cal-days { padding: 0; gap: 0; }
+  .cal-hd { padding: 9px 10px; background: var(--surface-2); border-bottom: 1px solid var(--line); border-left: 1px solid var(--line-soft); font-size: 12.5px; }
+  .cal-hd b { display: block; font-size: 13px; color: var(--ink); }
+  .cal-hd.today { background: var(--accent-soft); }
+  .cal-hd .rain { color: var(--info); font-weight: 600; }
+  .cal-ek { padding: 10px 12px; border-top: 1px solid var(--line-soft); font-size: 13px; }
+  .cal-ek b { display: block; font-size: 14px; }
+  .cal-corner { background: var(--surface-2); border-bottom: 1px solid var(--line); padding: 9px 12px; font-size: 12.5px; font-weight: 650; color: var(--ink-2); }
+  .lane { border-top: 1px solid var(--line-soft); min-height: 64px; align-content: start;
+    background-image: linear-gradient(90deg, transparent calc(100% - 1px), var(--line-soft) 0); background-size: calc(100% / 6) 100%; }
+  .job {
+    appearance: none; text-align: left; cursor: pointer; border: 1px solid #1B4733; border-radius: 5px;
+    background: var(--accent); color: #fff; padding: 6px 8px; font-size: 12.5px; line-height: 1.3; min-width: 0; overflow: hidden;
+  }
+  .job b { display: block; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .job span { display: block; opacity: .9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .job.planned { background: #DCEBE2; color: #173D2C; border-color: #9DC2AD; }
+  .job.warn { box-shadow: inset 0 -4px 0 #E0A100; }
+  .job.clash { box-shadow: inset 0 -4px 0 var(--bad); }
+  #mon-cal, #calc-draw { overflow-x: auto; }
+  @media (max-width: 900px) { .cal { min-width: 860px; } .fence-svg { min-width: 680px; } }
+
+  @media print {
+    .print-only { display: block; }
+    #calc-form-box { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="sign">
+  <div class="sign-top">
+    <a href="../index.html">Wszystkie panele</a>
+    <span class="demo-flag">Dane przykładowe</span>
+  </div>
+  <div class="sign-inner">
+    <div>
+      <h1>Twoja firma ogrodzeniowa</h1>
+      <p class="sign-sub">Od zapytania i pomiaru, przez wycenę i montaż, do ostatniej wpłaty</p>
+    </div>
+    <div class="sign-meta"><strong id="sign-day"></strong><span id="sign-sub"></span></div>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="Moduły panelu">
+  <div class="tabs-inner" role="tablist">
+    <button class="tab" data-tab="zapytania">Zapytania</button>
+    <button class="tab" data-tab="kalkulator">Kalkulator wyceny</button>
+    <button class="tab" data-tab="montaze">Montaże</button>
+    <button class="tab" data-tab="material">Materiał</button>
+    <button class="tab" data-tab="platnosci">Płatności</button>
+  </div>
+</nav>
+
+<main>
+  <!-- ZAPYTANIA -->
+  <section data-panel="zapytania" class="stack">
+    <div id="zap-strip"></div>
+    <div class="row-between">
+      <p class="lead">Każde zlecenie przechodzi przez te same kroki. Kliknij kartę, żeby przesunąć ją dalej albo otworzyć w kalkulatorze.</p>
+      <button class="btn primary" id="zap-new">Nowe zapytanie</button>
+    </div>
+    <div class="kanban-wrap"><div class="kanban" id="zap-board"></div></div>
+  </section>
+
+  <!-- KALKULATOR -->
+  <section data-panel="kalkulator" class="stack">
+    <div class="print-only" id="calc-print-head"></div>
+    <div class="box">
+      <div class="box-h"><h2 id="calc-draw-title">Rysunek ogrodzenia</h2><p id="calc-draw-sub"></p></div>
+      <div class="box-b" id="calc-draw"></div>
+    </div>
+    <div class="cols">
+      <div class="box" id="calc-form-box">
+        <div class="box-h"><h2>Dane do wyceny</h2><button class="btn sm ghost" id="calc-reset">Wyczyść</button></div>
+        <div class="box-b">
+          <form id="calc-form" class="form-grid" autocomplete="off">
+            <label class="field"><span>Klient</span><input name="klient" placeholder="Imię i nazwisko" value="Paweł Kubiak"></label>
+            <label class="field"><span>Miejscowość</span><input name="miasto" placeholder="Np. Opoczno" value="Inowłódz"></label>
+            <label class="field"><span>Długość ogrodzenia (mb)</span><input name="mb" type="number" min="1" max="2000" step="0.5" value="60"></label>
+            <label class="field"><span>Rodzaj ogrodzenia</span><select name="sys"></select></label>
+            <label class="field"><span>Wysokość</span><select name="h"></select></label>
+            <label class="field"><span>Kolor</span><select name="kolor"></select></label>
+            <label class="field"><span>Brama</span><select name="brama"></select></label>
+            <label class="field"><span>Furtki</span><input name="furtki" type="number" min="0" max="5" value="1"></label>
+            <div class="full row" style="gap:10px 22px">
+              <label class="check"><input type="checkbox" name="auto"> Automatyka bramy</label>
+              <label class="check"><input type="checkbox" name="podm" checked> Podmurówka prefabrykowana</label>
+              <label class="check"><input type="checkbox" name="mont" checked> Z montażem</label>
+            </div>
+            <label class="field"><span>Dojazd w jedną stronę (km)</span><input name="km" type="number" min="0" max="400" value="25"></label>
+            <label class="field"><span>Rabat na materiał (%)</span><input name="rabat" type="number" min="0" max="30" value="0"></label>
+            <label class="field"><span>Stawka VAT</span><select name="vat"><option value="23">23%</option><option value="8">8%</option></select></label>
+            <p class="full small" id="calc-err" style="color:var(--bad)"></p>
+          </form>
+          <details class="cennik"><summary>Cennik użyty w wycenie (przykładowy)</summary><div id="calc-cennik" style="margin-top:10px"></div></details>
+        </div>
+      </div>
+      <div class="box">
+        <div class="box-h"><h2>Wycena</h2><div class="row no-print"><button class="btn sm" onclick="window.print()">Drukuj ofertę</button><button class="btn sm primary" id="calc-save">Zapisz jako ofertę</button></div></div>
+        <div class="box-b flush" id="calc-items"></div>
+        <div class="box-b"><table class="tbl calc-sum" id="calc-sum"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MONTAŻE -->
+  <section data-panel="montaze" class="stack">
+    <div id="mon-strip"></div>
+    <div class="row-between"><div id="mon-week"></div><p class="muted small">Zielony: montaż potwierdzony. Jasny: zaakceptowane, termin wstępny. Żółta kreska: deszcz w prognozie. Czerwona: dwa zlecenia naraz.</p></div>
+    <div id="mon-cal"></div>
+  </section>
+
+  <!-- MATERIAŁ -->
+  <section data-panel="material" class="stack">
+    <div id="mat-strip"></div>
+    <div class="cols">
+      <div class="box">
+        <div class="box-h"><h2>Materiał na zlecenia</h2><p>Czy wszystko będzie gotowe przed montażem</p></div>
+        <div class="box-b flush" id="mat-table"></div>
+      </div>
+      <div class="box">
+        <div class="box-h"><h2>Na placu</h2><p>stan magazynu</p></div>
+        <div class="box-b flush" id="mat-stock"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PŁATNOŚCI -->
+  <section data-panel="platnosci" class="stack">
+    <div id="pl-strip"></div>
+    <div class="box">
+      <div class="box-h"><h2>Zaliczki i dopłaty</h2><p>Zaliczka 30% przed montażem, reszta 7 dni po odbiorze</p></div>
+      <div class="box-b flush" id="pl-table"></div>
+    </div>
+    <div class="cols-even">
+      <div class="box">
+        <div class="box-h"><h2>Należności według terminu</h2></div>
+        <div class="box-b"><div id="pl-bars"></div></div>
+      </div>
+      <div class="box">
+        <div class="box-h"><h2>Jak to działa</h2></div>
+        <div class="box-b"><p class="lead">Zaliczka 30% wpływa przed montażem. Bez niej montaż świeci się na czerwono tydzień wcześniej, żeby był czas zadzwonić. Dopłata ma termin 7 dni od odbioru; po terminie klient trafia na górę listy, a przypomnienie idzie SMS-em jednym kliknięciem.</p></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <span>Panel demo. Klienci, ceny i zlecenia są wymyślone, zmiany znikają po odświeżeniu strony.</span>
+  <a href="../index.html">Zobacz pozostałe panele</a>
+</footer>
+
+<script src="../assets/panel.js"></script>
+<script>
+(function () {
+  'use strict';
+  var r = P.rng(7016);
+  var TODAY = P.today();
+  var DAY = P.workday(TODAY);
+  var MON = P.monday(DAY);
+
+  /* ---------- Cennik przykładowy (netto). Zmień ceny tutaj. ---------- */
+  var HEIGHTS = [1.23, 1.53, 1.73, 2.03];
+  var SYS = {
+    p3d: { n: 'Panel 3D (drut 4 mm)', short: 'panel 3D', pcs: 'paneli', seg: 2.5, price: { 1.23: 92, 1.53: 112, 1.73: 128, 2.03: 152 }, post: 'słupek 60×40', postAdd: 0, podm: true, mont: 38, draw: 'mesh' },
+    p2d: { n: 'Panel 2D (drut 6/5/6 mm)', short: 'panel 2D', pcs: 'paneli', seg: 2.5, price: { 1.23: 165, 1.53: 198, 1.73: 225, 2.03: 265 }, post: 'słupek 60×40', postAdd: 0, podm: true, mont: 42, draw: 'mesh2' },
+    przesla: { n: 'Przęsła stalowe', short: 'przęsła', pcs: 'przęseł', seg: 2.0, price: { 1.23: 420, 1.53: 480, 1.73: 540, 2.03: 620 }, post: 'słupek 60×60', postAdd: 12, podm: true, mont: 55, draw: 'bars' },
+    sztachety: { n: 'Sztachety metalowe', short: 'sztachety', pcs: 'przęseł', seg: 2.0, price: { 1.23: 390, 1.53: 450, 1.73: 510, 2.03: 590 }, post: 'słupek 60×60', postAdd: 12, podm: true, mont: 52, draw: 'slats' },
+    gabion: { n: 'Gabion z kamieniem', short: 'gabion', pcs: 'koszy', seg: 2.0, price: { 1.23: 780, 1.53: 950, 1.73: 1090, 2.03: 1250 }, post: null, postAdd: 0, podm: false, mont: 120, draw: 'stone' }
+  };
+  var POST = { 1.23: 45, 1.53: 52, 1.73: 58, 2.03: 66 };
+  var PODM = 58;                      /* za odcinek: deska podmurówki + łączniki */
+  var COLORS = { '7016': { n: 'Antracyt RAL 7016', k: 1.12, hex: '#383E42' }, '6005': { n: 'Zielony RAL 6005', k: 1.12, hex: '#1F4D36' }, '9005': { n: 'Czarny RAL 9005', k: 1.12, hex: '#1E1F21' }, zn: { n: 'Ocynk bez malowania', k: 1, hex: '#9EA7AE' } };
+  var GATES = {
+    none: { n: 'Bez bramy', w: 0, price: 0, mont: 0, auto: 0 },
+    dwu: { n: 'Dwuskrzydłowa 3,5 m', w: 3.5, price: 2900, mont: 650, auto: 2400, kind: 'swing' },
+    p4: { n: 'Przesuwna 4 m', w: 4, price: 5400, mont: 1100, auto: 1900, kind: 'slide' },
+    p5: { n: 'Przesuwna 5 m', w: 5, price: 6300, mont: 1200, auto: 1900, kind: 'slide' }
+  };
+  var FURTKA = { price: 950, mont: 250, w: 1.0 };
+  var KM_FREE = 20, KM_RATE = 2.5;
+
+  function calc(o) {
+    var s = SYS[o.sys], c = COLORS[o.kolor], g = GATES[o.brama], h = o.h;
+    var fenceLen = Math.max(0, o.mb - g.w - o.furtki * FURTKA.w);
+    var segs = Math.ceil(fenceLen / s.seg - 1e-9);
+    var posts = s.post && segs ? segs + 1 : 0;
+    var items = [];
+    function add(n, q, unit, price, kind) { if (q > 0 && price > 0) items.push({ n: n, q: q, unit: unit, price: price, val: q * price, kind: kind }); }
+    add(s.n + ', ' + P.num(h, 2) + ' m, ' + c.n, segs, s.pcs === 'paneli' ? 'szt.' : s.pcs, s.price[h] * c.k, 'mat');
+    if (posts) add('Słupki z obejmami (' + s.post + ')', posts, 'szt.', (POST[h] + s.postAdd) * c.k, 'mat');
+    if (o.podm && s.podm) add('Podmurówka prefabrykowana z łącznikami', segs, 'szt.', PODM, 'mat');
+    if (g.w) add('Brama ' + g.n.toLowerCase() + ', ' + c.n, 1, 'szt.', g.price * c.k, 'mat');
+    if (g.w && o.auto) add('Automatyka bramy z pilotami', 1, 'kpl.', g.auto, 'mat');
+    add('Furtka ' + P.num(FURTKA.w, 1) + ' m z zamkiem', o.furtki, 'szt.', FURTKA.price * c.k, 'mat');
+    var mat = items.reduce(function (t, i) { return t + i.val; }, 0);
+    var rabat = Math.round(mat * (o.rabat || 0)) / 100;
+    if (o.mont) {
+      add('Montaż ogrodzenia', Math.round(fenceLen * 10) / 10, 'mb', s.mont, 'mont');
+      if (g.w) add('Montaż bramy' + (g.kind === 'slide' ? ' z fundamentem' : ''), 1, 'szt.', g.mont, 'mont');
+      add('Montaż furtek', o.furtki, 'szt.', FURTKA.mont, 'mont');
+    }
+    var km = Math.max(0, (o.km || 0) - KM_FREE);
+    add('Dojazd (ponad ' + KM_FREE + ' km, w obie strony)', km * 2, 'km', KM_RATE, 'mont');
+    var netto = items.reduce(function (t, i) { return t + i.val; }, 0) - rabat;
+    var vat = netto * o.vat / 100;
+    return { items: items, mat: mat, rabat: rabat, netto: netto, vat: vat, brutto: netto + vat, segs: segs, posts: posts, fenceLen: fenceLen, s: s, c: c, g: g };
+  }
+
+  /* ---------- Zlecenia przykładowe ---------- */
+  var NAMES = ['Tomasz Wróbel', 'Agnieszka Mazur', 'Paweł Kubiak', 'Joanna Sikora', 'Marek Baran', 'Ewa Duda', 'Krzysztof Szewczyk', 'Anna Pietrzak', 'Michał Wróblewski', 'Barbara Kaczmarek',
+    'Grzegorz Jasiński', 'Monika Zając', 'Robert Czarnecki', 'Iwona Sadowska', 'Dariusz Kowalewski', 'Beata Laskowska', 'Wspólnota os. Leśne', 'Jacek Ostrowski', 'Halina Witkowska', 'Sławomir Pawlak',
+    'Katarzyna Michalak', 'Zbigniew Król', 'Elżbieta Nowicka', 'Rafał Górski'];
+  var TOWNS = ['Tomaszów Maz.', 'Opoczno', 'Piotrków Tryb.', 'Rawa Maz.', 'Brzeziny', 'Koluszki', 'Inowłódz', 'Spała', 'Lubochnia', 'Ujazd', 'Rokiciny', 'Smardzewice', 'Wolbórz', 'Czerniewice', 'Będków'];
+  var STAGES = [
+    { k: 'nowe', n: 'Nowe zapytania' }, { k: 'pomiar', n: 'Pomiar umówiony' }, { k: 'wycena', n: 'Wycena wysłana' },
+    { k: 'akcept', n: 'Zaakceptowane' }, { k: 'montaz', n: 'Montaż zaplanowany' }, { k: 'koniec', n: 'Zakończone' }
+  ];
+  var EKIPY = [
+    { id: 'e1', n: 'Ekipa 1', lider: 'Marek', os: 3 },
+    { id: 'e2', n: 'Ekipa 2', lider: 'Krzysztof', os: 2 },
+    { id: 'e3', n: 'Ekipa 3', lider: 'Damian', os: 3 }
+  ];
+  var EK = {}; EKIPY.forEach(function (e) { EK[e.id] = e; });
+  var plan = ['nowe', 'nowe', 'nowe', 'nowe', 'pomiar', 'pomiar', 'pomiar', 'pomiar', 'wycena', 'wycena', 'wycena', 'wycena', 'wycena',
+    'akcept', 'akcept', 'akcept', 'montaz', 'montaz', 'montaz', 'montaz', 'montaz', 'koniec', 'koniec', 'koniec', 'koniec', 'przegr', 'przegr', 'przegr'];
+  /* montaże: [ekipa, przesunięcie w dniach roboczych od poniedziałku] */
+  var MSLOT = [['e1', 0], ['e2', 1], ['e3', 2], ['e1', 3], ['e2', 6]];
+  var ASLOT = [['e3', 3], ['e1', 8], ['e2', 11]];
+  var ORD = [];
+  plan.forEach(function (st, i) {
+    var sysK = (function () { var x = r(); return x < 0.5 ? 'p3d' : x < 0.65 ? 'p2d' : x < 0.77 ? 'przesla' : x < 0.9 ? 'sztachety' : 'gabion'; })();
+    var mb = sysK === 'gabion' ? P.int(r, 10, 28) : P.int(r, 5, 28) * 5;
+    var br = (function () { var x = r(); return x < 0.3 ? 'none' : x < 0.5 ? 'dwu' : x < 0.85 ? 'p4' : 'p5'; })();
+    if (mb < 20) br = 'none';
+    var o = {
+      id: 'z' + (101 + i), klient: NAMES[i % NAMES.length], miasto: P.pick(r, TOWNS), mb: mb, sys: sysK,
+      h: r() < 0.65 ? 1.53 : (r() < 0.5 ? 1.23 : 1.73), kolor: r() < 0.72 ? '7016' : (r() < 0.5 ? '6005' : 'zn'),
+      brama: br, auto: GATES[br].kind === 'slide' && r() < 0.6, furtki: br === 'none' ? (mb > 30 ? 1 : 0) : 1,
+      podm: SYS[sysK].podm && r() < 0.8, mont: true, km: P.int(r, 4, 55), rabat: r() < 0.25 ? 5 : 0, vat: 23, st: st
+    };
+    o.created = P.addDays(TODAY, -P.int(r, 0, 4) - (st === 'nowe' ? 0 : 6) - (['akcept', 'montaz', 'koniec'].indexOf(st) >= 0 ? 20 : 0));
+    if (st === 'pomiar') o.pomiar = P.addWorkdays(DAY, P.int(r, 0, 4));
+    if (st === 'wycena' || st === 'przegr') o.offer = P.addDays(TODAY, -P.int(r, 1, 12));
+    if (st === 'montaz') { var m = MSLOT.shift(); o.ekipa = m[0]; o.start = P.addWorkdays(P.addDays(MON, -1), m[1] + 1); }
+    if (st === 'akcept') { var a = ASLOT.shift(); o.ekipa = a[0]; o.start = P.addWorkdays(P.addDays(MON, -1), a[1] + 1); }
+    if (st === 'koniec') { o.done = P.addDays(TODAY, -P.int(r, 2, 26)); }
+    var p = calc(o); o.netto = p.netto; o.brutto = p.brutto;
+    o.days = Math.max(1, Math.min(3, Math.ceil(mb / (EK[o.ekipa || 'e1'].os === 3 ? 60 : 40)) + (GATES[o.brama].kind === 'slide' ? 1 : 0) + (sysK === 'gabion' ? 1 : 0)));
+    /* płatności i materiał */
+    if (st === 'akcept' || st === 'montaz' || st === 'koniec') {
+      o.zal = Math.round(o.brutto * 0.3);
+      o.zalPaid = st === 'koniec' ? true : r() < 0.72;
+      if (o.zalPaid) { o.zalDate = P.addDays(o.start || o.done, -P.int(r, 6, 14)); if (o.zalDate >= TODAY) o.zalDate = P.addDays(TODAY, -P.int(r, 1, 5)); }
+      if (st === 'koniec') { o.dopDue = P.addDays(o.done, 7); o.dopPaid = r() < 0.5; if (o.dopPaid) o.dopDate = P.addDays(o.done, P.int(r, 1, 6)); }
+      if (st !== 'koniec') {
+        o.ready = P.addWorkdays(o.start, -P.int(r, 1, 8));
+        o.matSt = o.ready <= TODAY ? 'gotowe' : (o.kolor === 'zn' ? 'zam' : (r() < 0.5 ? 'malarnia' : 'zam'));
+      }
+    }
+    ORD.push(o);
+  });
+  /* dopilnuj typowych sytuacji, które demo ma pokazać */
+  (function () {
+    var mz = ORD.filter(function (o) { return o.st === 'montaz'; });
+    mz[1].zalPaid = false; delete mz[1].zalDate;                       /* montaż za chwilę, a zaliczki brak */
+    mz[2].ready = P.addWorkdays(mz[2].start, 2); mz[2].matSt = 'malarnia'; /* materiał nie zdąży z malarni */
+    mz[0].ready = P.addDays(TODAY, -3); mz[0].matSt = 'gotowe';
+    var ko = ORD.filter(function (o) { return o.st === 'koniec'; });
+    ko[0].dopPaid = false; delete ko[0].dopDate; ko[0].done = P.addDays(TODAY, -24); ko[0].dopDue = P.addDays(ko[0].done, 7);
+    ko[1].dopPaid = true; ko[1].dopDate = P.addDays(ko[1].done, 3);
+  })();
+
+  var WEATHER = ['Słonecznie, 11°', 'Pochmurno, 9°', 'Pochmurno, 8°', 'Słonecznie, 10°', 'Deszcz, 7°', 'Pochmurno, 9°',
+    'Słonecznie, 8°', 'Przelotny deszcz, 8°', 'Słonecznie, 7°', 'Pochmurno, 6°', 'Słonecznie, 8°', 'Pochmurno, 7°'];
+  function rainy(i) { return /deszcz/i.test(WEATHER[i] || ''); }
+
+  var STOCK = [
+    ['Panel 3D 1,53 m antracyt', 86, 'szt.'], ['Panel 3D 1,53 m ocynk', 40, 'szt.'], ['Panel 3D 1,23 m zielony', 18, 'szt.'],
+    ['Panel 2D 1,53 m antracyt', 24, 'szt.'], ['Słupki 60×40 / 2,0 m antracyt', 140, 'szt.'], ['Słupki 60×60 / 2,2 m antracyt', 36, 'szt.'],
+    ['Podmurówka 2,5 m', 120, 'szt.'], ['Łączniki podmurówki', 160, 'szt.'], ['Obejmy do paneli', 600, 'szt.'], ['Brama przesuwna 4 m antracyt', 1, 'szt.'], ['Furtka 1,0 m antracyt', 3, 'szt.']
+  ];
+
+  /* ---------- Pomocnicze ---------- */
+  function desc(o) { var s = SYS[o.sys]; return o.mb + ' mb, ' + s.short + ' ' + P.num(o.h, 2) + ' m' + (o.brama !== 'none' ? ', brama ' + GATES[o.brama].n.toLowerCase() : ''); }
+  function stageName(k) { var s = STAGES.filter(function (x) { return x.k === k; })[0]; return s ? s.n : 'Przegrane'; }
+  function endOf(o) { return P.addWorkdays(o.start, o.days - 1); }
+  function workIdx(d) { /* indeks dnia roboczego (pn–sb) od poniedziałku MON */ var n = P.days(MON, d); var w = Math.floor(n / 7); return w * 6 + (n - w * 7); }
+  function byId(id) { return ORD.filter(function (o) { return o.id === id; })[0]; }
+
+  P.$('#sign-day').textContent = P.dayTitle(DAY);
+  P.$('#sign-sub').textContent = EKIPY.length + ' ekipy montażowe, ' + ORD.filter(function (o) { return o.st !== 'koniec' && o.st !== 'przegr'; }).length + ' otwartych zleceń';
+
+  /* ---------- ZAPYTANIA ---------- */
+  P.views.zapytania = function () {
+    var wk = ORD.filter(function (o) { return P.days(o.created, TODAY) <= 7; }).length;
+    var pom = ORD.filter(function (o) { return o.st === 'pomiar' && P.days(MON, o.pomiar) < 7; }).length;
+    var offers = ORD.filter(function (o) { return o.st === 'wycena'; });
+    var won = ORD.filter(function (o) { return ['akcept', 'montaz', 'koniec'].indexOf(o.st) >= 0; }).length, lost = ORD.filter(function (o) { return o.st === 'przegr'; }).length;
+    P.strip(P.$('#zap-strip'), [
+      { label: 'Nowe zapytania w 7 dni', value: wk, note: 'telefon, formularz, polecenie' },
+      { label: 'Pomiary w tym tygodniu', value: pom, note: 'umówione na miejscu u klienta' },
+      { label: 'Oferty czekające na decyzję', value: P.zl(offers.reduce(function (s, o) { return s + o.brutto; }, 0)), note: P.n(offers.length, 'oferta', 'oferty', 'ofert') + ' brutto' },
+      { label: 'Skuteczność ofert', value: P.num(won / (won + lost) * 100) + '%', note: won + ' wygranych, ' + lost + ' przegranych', tone: 'ok' }
+    ]);
+    P.$('#zap-board').innerHTML = STAGES.map(function (s) {
+      var list = ORD.filter(function (o) { return o.st === s.k; });
+      var sum = list.reduce(function (t, o) { return t + o.brutto; }, 0);
+      return '<div class="kcol"><div class="kcol-h"><b>' + s.n + '</b><div>' + P.n(list.length, 'zlecenie', 'zlecenia', 'zleceń') + (s.k === 'nowe' || s.k === 'pomiar' ? '' : ', ' + P.zl(sum)) + '</div></div><div class="kcards">' +
+        list.map(function (o) {
+          var when = '';
+          if (o.st === 'nowe') when = 'wpłynęło ' + P.rel(o.created);
+          if (o.st === 'pomiar') when = 'pomiar ' + P.dowS(o.pomiar) + ' ' + P.d(o.pomiar);
+          if (o.st === 'wycena') when = 'oferta wysłana ' + P.rel(o.offer);
+          if (o.st === 'akcept' || o.st === 'montaz') when = 'montaż ' + P.dowS(o.start) + ' ' + P.d(o.start) + ', ' + EK[o.ekipa].n;
+          if (o.st === 'koniec') when = 'zakończone ' + P.d(o.done);
+          return '<button class="kcard" data-id="' + o.id + '"><b>' + P.esc(o.klient) + '</b>' + P.esc(o.miasto) + '<br>' + P.esc(desc(o)) +
+            (o.st === 'nowe' ? '' : '<br><span class="v">' + P.zl(o.brutto) + '</span>') + '<span class="when">' + when + '</span></button>';
+        }).join('') + '</div></div>';
+    }).join('');
+    P.$$('.kcard').forEach(function (b) { b.onclick = function () { openOrder(byId(b.getAttribute('data-id'))); }; });
+  };
+  function openOrder(o) {
+    var p = calc(o);
+    var body = '<dl class="kv">' +
+      '<dt>Etap</dt><dd>' + P.chip(stageName(o.st), o.st === 'przegr' ? 'bad' : 'acc') + '</dd>' +
+      '<dt>Miejscowość</dt><dd>' + P.esc(o.miasto) + ', dojazd ' + o.km + ' km</dd>' +
+      '<dt>Ogrodzenie</dt><dd>' + P.esc(SYS[o.sys].n) + ', ' + P.num(o.h, 2) + ' m, ' + COLORS[o.kolor].n + '<span class="sub muted small">' + o.mb + ' mb: ' + p.segs + ' ' + SYS[o.sys].pcs + (p.posts ? ', ' + p.posts + ' słupków' : '') + (o.podm && SYS[o.sys].podm ? ', z podmurówką' : '') + '</span></dd>' +
+      '<dt>Brama i furtki</dt><dd>' + GATES[o.brama].n + (o.auto ? ' z automatyką' : '') + ', furtki: ' + o.furtki + '</dd>' +
+      (o.st !== 'nowe' ? '<dt>Wartość</dt><dd><b>' + P.zl(o.brutto) + '</b> brutto (' + P.zl(o.netto) + ' netto)</dd>' : '<dt>Wartość</dt><dd class="muted">wycena po pomiarze</dd>') +
+      (o.pomiar ? '<dt>Pomiar</dt><dd>' + P.dow(o.pomiar) + ', ' + P.d(o.pomiar) + '</dd>' : '') +
+      (o.start ? '<dt>Montaż</dt><dd>' + P.d(o.start) + '–' + P.d(endOf(o)) + ', ' + EK[o.ekipa].n + ' (' + EK[o.ekipa].lider + ')</dd>' : '') +
+      '</dl>';
+    var acts = [];
+    function go(fn, msg) { return function (close) { fn(); close(); P.toast(msg); P.refresh(); }; }
+    if (o.st === 'nowe') acts.push({ label: 'Umów pomiar', primary: true, onClick: go(function () { o.st = 'pomiar'; o.pomiar = P.addWorkdays(DAY, 2); }, 'Pomiar umówiony: ' + P.dow(P.addWorkdays(DAY, 2)) + ' ' + P.d(P.addWorkdays(DAY, 2))) });
+    if (o.st === 'pomiar' || o.st === 'nowe') acts.push({ label: 'Otwórz w kalkulatorze', onClick: function (close) { close(); loadCalc(o); location.hash = 'kalkulator'; } });
+    if (o.st === 'pomiar') acts.push({ label: 'Wycena wysłana', primary: true, onClick: go(function () { o.st = 'wycena'; o.offer = TODAY; }, 'Oferta wysłana do: ' + o.klient) });
+    if (o.st === 'wycena') {
+      acts.push({ label: 'Klient rezygnuje', onClick: go(function () { o.st = 'przegr'; }, 'Oznaczono jako przegrane: ' + o.klient) });
+      acts.push({ label: 'Klient akceptuje', primary: true, onClick: go(function () {
+        o.st = 'akcept'; o.ekipa = 'e2'; o.start = P.addWorkdays(DAY, 10); o.zal = Math.round(o.brutto * 0.3); o.zalPaid = false;
+        o.ready = P.addWorkdays(DAY, 7); o.matSt = 'zam';
+      }, 'Zaakceptowane. Wstępny termin montażu: ' + P.d(P.addWorkdays(DAY, 10))) });
+    }
+    if (o.st === 'akcept') acts.push({ label: 'Potwierdź termin montażu', primary: true, onClick: go(function () { o.st = 'montaz'; }, 'Montaż potwierdzony: ' + o.klient + ', ' + P.d(o.start)) });
+    if (o.st === 'montaz') acts.push({ label: 'Montaż zakończony', primary: true, onClick: go(function () { o.st = 'koniec'; o.done = TODAY; o.dopDue = P.addDays(TODAY, 7); o.dopPaid = false; o.zalPaid = true; }, 'Zakończone. Dopłata do ' + P.d(P.addDays(TODAY, 7))) });
+    acts.push({ label: 'Zamknij', ghost: true });
+    P.modal({ title: o.klient, sub: 'Zlecenie ' + o.id.toUpperCase() + ', wpłynęło ' + P.d(o.created), body: body, actions: acts });
+  }
+  P.$('#zap-new').addEventListener('click', function () {
+    var body = '<div class="form-grid">' +
+      '<label class="field"><span>Klient</span><input id="n-k" placeholder="Imię i nazwisko"></label>' +
+      '<label class="field"><span>Miejscowość</span><input id="n-m" placeholder="Np. Spała"></label>' +
+      '<label class="field"><span>Przybliżona długość (mb)</span><input id="n-mb" type="number" min="1" value="50"></label>' +
+      '<label class="field"><span>Rodzaj</span><select id="n-s">' + P.options(Object.keys(SYS).map(function (k) { return { v: k, l: SYS[k].n }; }), 'p3d') + '</select></label>' +
+      '<p class="full small" id="n-err" style="color:var(--bad)"></p></div>';
+    P.modal({ title: 'Nowe zapytanie', body: body, actions: [
+      { label: 'Anuluj', ghost: true },
+      { label: 'Dodaj zapytanie', primary: true, onClick: function (close, d) {
+        var k = P.$('#n-k', d).value.trim(), m = P.$('#n-m', d).value.trim(), mb = +P.$('#n-mb', d).value;
+        if (!k || !m) { P.$('#n-err', d).textContent = 'Wpisz klienta i miejscowość.'; return; }
+        if (!(mb > 0)) { P.$('#n-err', d).textContent = 'Podaj długość w metrach.'; return; }
+        var o = { id: 'z' + (200 + ORD.length), klient: k, miasto: m, mb: mb, sys: P.$('#n-s', d).value, h: 1.53, kolor: '7016', brama: 'none', auto: false, furtki: 1, podm: true, mont: true, km: 20, rabat: 0, vat: 23, st: 'nowe', created: TODAY, days: 1 };
+        var p = calc(o); o.netto = p.netto; o.brutto = p.brutto;
+        ORD.unshift(o); close(); P.toast('Dodano zapytanie: ' + k); P.views.zapytania();
+      } }
+    ] });
+  });
+
+  /* ---------- KALKULATOR ---------- */
+  var form = P.$('#calc-form');
+  form.sys.innerHTML = P.options(Object.keys(SYS).map(function (k) { return { v: k, l: SYS[k].n }; }), 'p3d');
+  form.h.innerHTML = P.options(HEIGHTS.map(function (h) { return { v: h, l: P.num(h, 2) + ' m' }; }), 1.53);
+  form.kolor.innerHTML = P.options(Object.keys(COLORS).map(function (k) { return { v: k, l: COLORS[k].n }; }), '7016');
+  form.brama.innerHTML = P.options(Object.keys(GATES).map(function (k) { return { v: k, l: GATES[k].n }; }), 'p4');
+  var calcSource = null;
+  function readForm() {
+    return { klient: form.klient.value.trim(), miasto: form.miasto.value.trim(), mb: +form.mb.value, sys: form.sys.value, h: +form.h.value, kolor: form.kolor.value,
+      brama: form.brama.value, auto: form.auto.checked, furtki: Math.max(0, Math.round(+form.furtki.value || 0)), podm: form.podm.checked, mont: form.mont.checked,
+      km: Math.max(0, +form.km.value || 0), rabat: Math.min(30, Math.max(0, +form.rabat.value || 0)), vat: +form.vat.value };
+  }
+  function loadCalc(o) {
+    calcSource = o;
+    form.klient.value = o.klient; form.miasto.value = o.miasto; form.mb.value = o.mb; form.sys.value = o.sys; form.h.value = o.h; form.kolor.value = o.kolor;
+    form.brama.value = o.brama; form.auto.checked = !!o.auto; form.furtki.value = o.furtki; form.podm.checked = !!o.podm; form.mont.checked = o.mont !== false;
+    form.km.value = o.km; form.rabat.value = o.rabat || 0; form.vat.value = o.vat || 23;
+  }
+  function drawFence(o, p) {
+    var W = 1100, H = 190, x0 = 20, ground = 150;
+    var totalM = p.segs * p.s.seg + p.g.w + o.furtki * FURTKA.w;
+    if (!totalM) return '<p class="muted">Podaj długość ogrodzenia.</p>';
+    var k = (W - 2 * x0) / totalM, hpx = 46 * o.h, col = p.c.hex, lt = '#D9DEE2';
+    var parts = [], left = Math.floor(p.segs / 2);
+    for (var i = 0; i < left; i++) parts.push('seg');
+    if (o.furtki) for (var f = 0; f < o.furtki; f++) parts.push('furtka');
+    if (p.g.w) parts.push('gate');
+    for (var j = left; j < p.segs; j++) parts.push('seg');
+    var x = x0, svg = [];
+    var podm = o.podm && p.s.podm, base = podm ? ground - 12 : ground, labelY = ground - hpx - 30;
+    function post(px) { if (!p.s.post) return; svg.push('<rect x="' + (px - 2.5) + '" y="' + (base - hpx - 8) + '" width="5" height="' + (hpx + 8 + (ground - base)) + '" fill="' + col + '"/>'); }
+    parts.forEach(function (t, idx) {
+      var w = (t === 'seg' ? p.s.seg : t === 'gate' ? p.g.w : FURTKA.w) * k;
+      if (t === 'seg') {
+        if (podm) svg.push('<rect x="' + x + '" y="' + base + '" width="' + w + '" height="12" fill="#B9BEC2"/>');
+        var top = base - hpx;
+        if (p.s.draw === 'stone') {
+          svg.push('<rect x="' + (x + 1) + '" y="' + top + '" width="' + (w - 2) + '" height="' + hpx + '" fill="#C9C3B8" stroke="' + col + '" stroke-width="2"/>');
+          for (var s = 0; s < 6; s++) svg.push('<circle cx="' + (x + w * ((s * 37) % 100) / 100) + '" cy="' + (top + hpx * ((s * 53 + 20) % 90) / 100) + '" r="' + (3 + s % 3) + '" fill="#A79F92"/>');
+        } else {
+          svg.push('<rect x="' + x + '" y="' + top + '" width="' + w + '" height="' + hpx + '" fill="none" stroke="' + col + '" stroke-width="2"/>');
+          var step = p.s.draw === 'slats' ? 9 : (p.s.draw === 'bars' ? 7 : 5);
+          for (var v = x + step; v < x + w - 1; v += step * (k > 30 ? 1 : 1.6)) svg.push('<line x1="' + v + '" y1="' + top + '" x2="' + v + '" y2="' + (top + hpx) + '" stroke="' + col + '" stroke-width="' + (p.s.draw === 'slats' ? 3.2 : 1.2) + '"/>');
+          if (p.s.draw === 'mesh' || p.s.draw === 'mesh2') for (var hh = 1; hh < 4; hh++) svg.push('<line x1="' + x + '" y1="' + (top + hpx * hh / 4) + '" x2="' + (x + w) + '" y2="' + (top + hpx * hh / 4) + '" stroke="' + col + '" stroke-width="' + (p.s.draw === 'mesh2' ? 2 : 1.2) + '"/>');
+          if (p.s.draw === 'bars') svg.push('<line x1="' + x + '" y1="' + (top + 8) + '" x2="' + (x + w) + '" y2="' + (top + 8) + '" stroke="' + col + '" stroke-width="3"/>');
+        }
+        post(x); if (idx === parts.length - 1 || parts[idx + 1] !== 'seg') post(x + w);
+      } else if (t === 'gate') {
+        var gh = hpx + 4, gt = ground - gh;
+        if (p.g.kind === 'swing') {
+          svg.push('<rect x="' + (x + 2) + '" y="' + gt + '" width="' + (w / 2 - 3) + '" height="' + gh + '" fill="none" stroke="' + col + '" stroke-width="3"/><rect x="' + (x + w / 2 + 1) + '" y="' + gt + '" width="' + (w / 2 - 3) + '" height="' + gh + '" fill="none" stroke="' + col + '" stroke-width="3"/>');
+        } else {
+          svg.push('<rect x="' + (x + 2) + '" y="' + gt + '" width="' + (w - 4) + '" height="' + gh + '" fill="none" stroke="' + col + '" stroke-width="3"/><line x1="' + (x + 2) + '" y1="' + ground + '" x2="' + (x + w - 2) + '" y2="' + gt + '" stroke="' + col + '" stroke-width="2"/>');
+          svg.push('<path d="M' + (x + w * 0.35) + ' ' + (gt - 10) + ' h' + (w * 0.3) + ' m-8 -5 l8 5 l-8 5" fill="none" stroke="#6E7882" stroke-width="1.5"/>');
+        }
+        for (var gv = x + 10; gv < x + w - 6; gv += 10) svg.push('<line x1="' + gv + '" y1="' + (gt + 4) + '" x2="' + gv + '" y2="' + (ground - 3) + '" stroke="' + col + '" stroke-width="1" opacity=".7"/>');
+        svg.push('<rect x="' + (x - 4) + '" y="' + (gt - 6) + '" width="7" height="' + (gh + 6) + '" fill="' + col + '"/><rect x="' + (x + w - 3) + '" y="' + (gt - 6) + '" width="7" height="' + (gh + 6) + '" fill="' + col + '"/>');
+        svg.push('<text x="' + (x + 4) + '" y="' + labelY + '" text-anchor="start" font-size="13" fill="#47515B">brama ' + P.num(p.g.w, 1) + ' m</text>');
+      } else {
+        var fh = hpx + 2, ft = ground - fh;
+        svg.push('<rect x="' + (x + 2) + '" y="' + ft + '" width="' + (w - 4) + '" height="' + fh + '" fill="none" stroke="' + col + '" stroke-width="3"/><circle cx="' + (x + w - 8) + '" cy="' + (ft + fh / 2) + '" r="2.5" fill="' + col + '"/>');
+        svg.push('<text x="' + (x + w - 4) + '" y="' + labelY + '" text-anchor="end" font-size="13" fill="#47515B">' + (o.furtki > 1 ? 'furtki' : 'furtka') + '</text>');
+      }
+      x += w;
+    });
+    svg.unshift('<line x1="0" y1="' + ground + '" x2="' + W + '" y2="' + ground + '" stroke="#8E979F" stroke-width="1.5"/>');
+    svg.push('<line x1="' + x0 + '" y1="' + (ground + 12) + '" x2="' + (W - x0) + '" y2="' + (ground + 12) + '" stroke="#8E979F" stroke-width="1"/><line x1="' + x0 + '" y1="' + (ground + 6) + '" x2="' + x0 + '" y2="' + (ground + 18) + '" stroke="#8E979F"/><line x1="' + (W - x0) + '" y1="' + (ground + 6) + '" x2="' + (W - x0) + '" y2="' + (ground + 18) + '" stroke="#8E979F"/>');
+    svg.push('<text x="' + (W / 2) + '" y="' + (ground + 34) + '" text-anchor="middle" font-size="14" font-weight="600" fill="#1C2329">' + P.num(o.mb, o.mb % 1 ? 1 : 0) + ' mb razem</text>');
+    return '<svg class="fence-svg" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Rysunek ogrodzenia: ' + P.esc(desc(o)) + '">' + svg.join('') + '</svg>';
+  }
+  P.views.kalkulator = function () {
+    var o = readForm(), err = '';
+    if (!(o.mb > 0)) err = 'Podaj długość ogrodzenia w metrach.';
+    else if (o.mb < GATES[o.brama].w + o.furtki * FURTKA.w) err = 'Brama i furtki są dłuższe niż całe ogrodzenie. Zwiększ długość albo zmień bramę.';
+    P.$('#calc-err').textContent = err;
+    form.auto.disabled = o.brama === 'none';
+    if (err) { P.$('#calc-draw').innerHTML = '<p class="muted">' + err + '</p>'; P.$('#calc-items').innerHTML = ''; P.$('#calc-sum').innerHTML = ''; return; }
+    var p = calc(o);
+    P.$('#calc-draw-title').textContent = o.klient ? 'Ogrodzenie: ' + o.klient + (o.miasto ? ', ' + o.miasto : '') : 'Rysunek ogrodzenia';
+    P.$('#calc-draw-sub').textContent = p.segs + ' ' + p.s.pcs + ' po ' + P.num(p.s.seg, 1) + ' m' + (p.posts ? ', ' + p.posts + ' słupków' : '') + ', ' + p.c.n;
+    P.$('#calc-draw').innerHTML = drawFence(o, p);
+    P.$('#calc-print-head').innerHTML = '<h2 style="font-size:22px">Oferta na ogrodzenie</h2><p>' + P.esc(o.klient || 'Klient') + (o.miasto ? ', ' + P.esc(o.miasto) : '') + ', ' + P.dy(TODAY) + '. Oferta ważna 14 dni.</p>';
+    P.table(P.$('#calc-items'), [
+      { key: 'n', label: 'Pozycja', sort: false, html: function (i) { return P.esc(i.n) + (i.kind === 'mont' ? '<span class="sub">usługa</span>' : ''); } },
+      { key: 'q', label: 'Ilość', num: 1, sort: false, html: function (i) { return '<span class="nowrap">' + P.num(i.q, i.q % 1 ? 1 : 0) + ' ' + i.unit + '</span>'; } },
+      { key: 'price', label: 'Cena', num: 1, sort: false, html: function (i) { return '<span class="nowrap">' + P.zl(i.price, 2) + '</span>'; } },
+      { key: 'val', label: 'Wartość', num: 1, sort: false, html: function (i) { return '<span class="nowrap">' + P.zl(i.val, 2) + '</span>'; } }
+    ], { rows: p.items });
+    P.$('#calc-sum').innerHTML =
+      (p.rabat ? '<tr><td>Rabat na materiał ' + o.rabat + '%</td><td class="num">−' + P.zl(p.rabat, 2) + '</td></tr>' : '') +
+      '<tr><td>Razem netto</td><td class="num">' + P.zl(p.netto, 2) + '</td></tr>' +
+      '<tr><td>VAT ' + o.vat + '%</td><td class="num">' + P.zl(p.vat, 2) + '</td></tr>' +
+      '<tr class="total"><td>Do zapłaty brutto</td><td class="num">' + P.zl(p.brutto, 2) + '</td></tr>' +
+      '<tr><td class="muted">Za metr bieżący brutto</td><td class="num muted">' + P.zl(p.brutto / o.mb, 2) + '</td></tr>' +
+      '<tr><td class="muted">Zaliczka 30% przy zamówieniu</td><td class="num muted">' + P.zl(Math.round(p.brutto * 0.3)) + '</td></tr>';
+  };
+  form.addEventListener('input', function () { P.views.kalkulator(); });
+  form.addEventListener('change', function () { P.views.kalkulator(); });
+  form.addEventListener('submit', function (e) { e.preventDefault(); });
+  P.$('#calc-reset').addEventListener('click', function () {
+    calcSource = null; form.reset(); form.sys.value = 'p3d'; form.h.value = '1.53'; form.kolor.value = '7016'; form.brama.value = 'p4'; P.views.kalkulator();
+  });
+  P.$('#calc-save').addEventListener('click', function () {
+    var o = readForm();
+    if (!o.klient) { P.$('#calc-err').textContent = 'Wpisz klienta, żeby zapisać ofertę.'; form.klient.focus(); return; }
+    if (P.$('#calc-err').textContent) return;
+    var p = calc(o);
+    var target = calcSource && (calcSource.st === 'nowe' || calcSource.st === 'pomiar') ? calcSource : null;
+    if (!target) { target = { id: 'z' + (200 + ORD.length), created: TODAY, days: 1 }; ORD.unshift(target); }
+    Object.keys(o).forEach(function (k) { target[k] = o[k]; });
+    target.netto = p.netto; target.brutto = p.brutto; target.st = 'wycena'; target.offer = TODAY;
+    calcSource = target;
+    P.toast('Oferta zapisana: ' + o.klient + ', ' + P.zl(p.brutto) + ' brutto. Jest w Zapytaniach.');
+  });
+  P.$('#calc-cennik').innerHTML = '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Rodzaj</th>' + HEIGHTS.map(function (h) { return '<th class="num">' + P.num(h, 2) + ' m</th>'; }).join('') + '<th class="num">Montaż</th></tr></thead><tbody>' +
+    Object.keys(SYS).map(function (k) { var s = SYS[k]; return '<tr><td>' + s.n + '<span class="sub">za ' + (s.seg === 2.5 ? 'panel 2,5 m' : 'przęsło 2 m') + ', ocynk</span></td>' + HEIGHTS.map(function (h) { return '<td class="num">' + P.zl(s.price[h]) + '</td>'; }).join('') + '<td class="num">' + s.mont + ' zł/mb</td></tr>'; }).join('') +
+    '</tbody></table></div><p class="muted small" style="margin-top:8px">Malowanie proszkowe +12%. Słupek ' + P.zl(POST[1.53]) + ' (1,53 m), podmurówka ' + P.zl(PODM) + ', furtka ' + P.zl(FURTKA.price) + ', brama przesuwna 4 m ' + P.zl(GATES.p4.price) + '. Dojazd powyżej ' + KM_FREE + ' km: ' + P.num(KM_RATE, 2) + ' zł/km. Ceny w pliku ogrodzenia/index.html, sekcja „Cennik”.</p>';
+
+  /* ---------- MONTAŻE ---------- */
+  var monWeek = 0;
+  P.views.montaze = function () {
+    var jobs = ORD.filter(function (o) { return (o.st === 'montaz' || o.st === 'akcept') && o.start; });
+    var weekStart = monWeek * 6, todayIdx = workIdx(DAY);
+    /* kolizje: ta sama ekipa w tym samym dniu */
+    var used = {}, clash = {};
+    jobs.forEach(function (o) { for (var d = 0; d < o.days; d++) { var key = o.ekipa + ':' + workIdx(P.addWorkdays(o.start, d)) ; if (used[key]) { clash[o.id] = 1; clash[used[key]] = 1; } else used[key] = o.id; } });
+    /* deszcz w dniu montażu */
+    var wet = {};
+    jobs.forEach(function (o) { for (var d = 0; d < o.days; d++) { var i = workIdx(P.addWorkdays(o.start, d)); if (rainy(i)) wet[o.id] = 1; } });
+    var inWeek = function (o) { for (var d = 0; d < o.days; d++) { var wi = workIdx(P.addWorkdays(o.start, d)); if (wi >= weekStart && wi < weekStart + 6) return true; } return false; };
+    var wk = jobs.filter(inWeek);
+    var busy = 0; EKIPY.forEach(function (e) { for (var i = 0; i < 6; i++) if (used[e.id + ':' + (weekStart + i)]) busy++; });
+    P.strip(P.$('#mon-strip'), [
+      { label: monWeek ? 'Montaże w przyszłym tygodniu' : 'Montaże w tym tygodniu', value: wk.length, note: wk.filter(function (o) { return o.st === 'montaz'; }).length + ' potwierdzonych' },
+      { label: 'Metrów do postawienia', value: P.num(wk.reduce(function (s, o) { return s + o.mb; }, 0)) + ' mb', note: 'w tym ' + wk.filter(function (o) { return o.brama !== 'none'; }).length + ' z bramą' },
+      { label: 'Wolne dni ekip', value: EKIPY.length * 6 - busy, note: 'z ' + (EKIPY.length * 6) + ' dni (pn–sb)', tone: 'ok' },
+      { label: 'Do przesunięcia', value: Object.keys(clash).length + wk.filter(function (o) { return wet[o.id] && !clash[o.id]; }).length, note: 'deszcz albo dwa zlecenia naraz', tone: (Object.keys(clash).length || wk.some(function (o) { return wet[o.id]; })) ? 'warn' : 'ok' }
+    ]);
+    P.seg(P.$('#mon-week'), [{ v: 0, l: 'Ten tydzień' }, { v: 1, l: 'Przyszły tydzień' }], monWeek, function (v) { monWeek = +v; P.views.montaze(); });
+    var html = '<div class="cal"><div class="cal-corner">Ekipa</div><div class="cal-days">';
+    for (var i = 0; i < 6; i++) {
+      var idx = weekStart + i, d = P.addDays(MON, monWeek * 7 + i);
+      html += '<div class="cal-hd' + (idx === todayIdx ? ' today' : '') + '"><b>' + P.dowS(d) + ' ' + P.d(d) + (idx === todayIdx ? ', dziś' : '') + '</b><span class="' + (rainy(idx) ? 'rain' : '') + '">' + WEATHER[idx] + '</span></div>';
+    }
+    html += '</div>';
+    EKIPY.forEach(function (e) {
+      html += '<div class="cal-ek"><b>' + e.n + '</b>' + e.lider + ', ' + e.os + ' os.</div><div class="lane">';
+      jobs.filter(function (o) { return o.ekipa === e.id && inWeek(o); }).sort(function (a, b) { return a.start - b.start; }).forEach(function (o) {
+        var cov = []; for (var d = 0; d < o.days; d++) { var wi = workIdx(P.addWorkdays(o.start, d)); if (wi >= weekStart && wi < weekStart + 6) cov.push(wi - weekStart); }
+        var a = Math.min.apply(null, cov), b = Math.max.apply(null, cov);
+        var cls = (o.st === 'akcept' ? ' planned' : '') + (clash[o.id] ? ' clash' : (wet[o.id] ? ' warn' : ''));
+        html += '<button class="job' + cls + '" style="grid-column:' + (a + 1) + ' / span ' + (b - a + 1) + '" data-id="' + o.id + '"><b>' + P.esc(o.klient) + '</b><span>' + P.esc(o.miasto) + ', ' + o.mb + ' mb ' + SYS[o.sys].short + '</span>' +
+          '<span>' + (clash[o.id] ? 'dwa zlecenia naraz' : wet[o.id] ? 'deszcz w prognozie' : (o.st === 'akcept' ? 'termin wstępny' : o.days + ' ' + P.plural(o.days, 'dzień', 'dni', 'dni'))) + '</span></button>';
+      });
+      html += '</div>';
+    });
+    html += '</div>';
+    P.$('#mon-cal').innerHTML = html;
+    P.$$('#mon-cal .job').forEach(function (b) { b.onclick = function () { editJob(byId(b.getAttribute('data-id'))); }; });
+  };
+  function editJob(o) {
+    var opts = [];
+    for (var i = 0; i < 12; i++) { var d = P.addDays(MON, Math.floor(i / 6) * 7 + i % 6); opts.push({ v: P.iso(d), l: P.dow(d) + ' ' + P.d(d) + ' (' + WEATHER[i] + ')' }); }
+    var body = '<p class="lead" style="margin-bottom:12px">' + P.esc(o.miasto) + ', ' + P.esc(desc(o)) + '. Wartość ' + P.zl(o.brutto) + '.</p><div class="form-grid">' +
+      '<label class="field"><span>Ekipa</span><select id="j-e">' + P.options(EKIPY.map(function (e) { return { v: e.id, l: e.n + ' (' + e.lider + ')' }; }), o.ekipa) + '</select></label>' +
+      '<label class="field"><span>Dni pracy</span><select id="j-d">' + P.options([1, 2, 3, 4].map(function (n) { return { v: n, l: n + ' ' + P.plural(n, 'dzień', 'dni', 'dni') }; }), o.days) + '</select></label>' +
+      '<label class="field full"><span>Początek montażu</span><select id="j-s">' + P.options(opts, P.iso(o.start)) + '</select></label></div>' +
+      (o.zalPaid ? '' : '<p class="small" style="color:var(--bad);margin-top:10px">Zaliczka jeszcze nie wpłynęła.</p>');
+    P.modal({ title: 'Montaż: ' + o.klient, sub: stageName(o.st), body: body, actions: [
+      { label: 'Anuluj', ghost: true },
+      { label: 'Zapisz termin', primary: true, onClick: function (close, d) {
+        o.ekipa = P.$('#j-e', d).value; o.days = +P.$('#j-d', d).value; o.start = P.fromIso(P.$('#j-s', d).value);
+        close(); P.toast('Montaż ' + o.klient + ': ' + P.dow(o.start) + ' ' + P.d(o.start) + ', ' + EK[o.ekipa].n); P.views.montaze();
+      } }
+    ] });
+  }
+
+  /* ---------- MATERIAŁ ---------- */
+  var MAT_ST = { zam: ['Zamówione u dostawcy', 'warn'], malarnia: ['W malarni proszkowej', 'info'], gotowe: ['Gotowe na placu', 'ok'] };
+  P.views.material = function () {
+    var rows = ORD.filter(function (o) { return (o.st === 'akcept' || o.st === 'montaz') && o.start; });
+    var late = rows.filter(function (o) { return o.matSt !== 'gotowe' && o.ready > P.addWorkdays(o.start, -1); });
+    P.strip(P.$('#mat-strip'), [
+      { label: 'Zlecenia czekające na montaż', value: rows.length, note: P.num(rows.reduce(function (s, o) { return s + o.mb; }, 0)) + ' mb ogrodzeń' },
+      { label: 'Gotowe na placu', value: rows.filter(function (o) { return o.matSt === 'gotowe'; }).length, note: 'można jechać', tone: 'ok' },
+      { label: 'W malarni', value: rows.filter(function (o) { return o.matSt === 'malarnia'; }).length, note: 'malowanie proszkowe' },
+      { label: 'Nie zdąży przed montażem', value: late.length, note: late.map(function (o) { return o.klient.split(' ').pop(); }).join(', ') || 'wszystko na czas', tone: late.length ? 'bad' : 'ok' }
+    ]);
+    P.table(P.$('#mat-table'), [
+      { key: 'klient', label: 'Zlecenie', html: function (o) { var p = calc(o); return '<b>' + P.esc(o.klient) + '</b><span class="sub">' + p.segs + ' ' + p.s.pcs + ' ' + P.num(o.h, 2) + ' m' + (p.posts ? ', ' + p.posts + ' słupków' : '') + (o.brama !== 'none' ? ', brama' : '') + ', ' + COLORS[o.kolor].n.split(' ').slice(0, 1).join('').toLowerCase() + '</span>'; } },
+      { key: 'start', label: 'Montaż', val: function (o) { return +o.start; }, html: function (o) { return P.d(o.start) + '<span class="sub">' + P.rel(o.start) + '</span>'; } },
+      { key: 'ready', label: 'Gotowe na', val: function (o) { return +o.ready; }, html: function (o) { return P.d(o.ready); } },
+      { key: 'st', label: 'Status', val: function (o) { return late.indexOf(o) >= 0 ? 0 : (o.matSt === 'gotowe' ? 2 : 1); }, html: function (o) {
+        var s = MAT_ST[o.matSt], h = P.chip(s[0], s[1]);
+        if (late.indexOf(o) >= 0) h += ' ' + P.chip('Nie zdąży: gotowe ' + P.d(o.ready) + ', montaż ' + P.d(o.start), 'bad');
+        return h; } },
+      { key: 'a', label: '', sort: false, html: function (o) { return o.matSt === 'gotowe' ? '' : '<button class="btn sm" data-ready="' + o.id + '">Gotowe</button>'; } }
+    ], { rows: rows, sortKey: 'st' });
+    P.$$('[data-ready]').forEach(function (b) { b.onclick = function () { var o = byId(b.getAttribute('data-ready')); o.matSt = 'gotowe'; o.ready = TODAY; P.toast('Materiał gotowy na placu: ' + o.klient); P.views.material(); }; });
+    P.table(P.$('#mat-stock'), [
+      { key: 0, label: 'Pozycja', html: function (s) { return P.esc(s[0]); } },
+      { key: 1, label: 'Stan', num: 1, html: function (s) { return '<b>' + P.num(s[1]) + '</b> ' + s[2]; } }
+    ], { rows: STOCK });
+  };
+
+  /* ---------- PŁATNOŚCI ---------- */
+  P.views.platnosci = function () {
+    var rows = ORD.filter(function (o) { return o.zal != null; });
+    var zalOpen = rows.filter(function (o) { return !o.zalPaid; });
+    var noZal = zalOpen.filter(function (o) { return o.start && P.days(TODAY, o.start) <= 7; });
+    var dopLate = rows.filter(function (o) { return o.st === 'koniec' && !o.dopPaid && o.dopDue < TODAY; });
+    var month = 0;
+    rows.forEach(function (o) {
+      if (o.zalPaid && o.zalDate && P.days(o.zalDate, TODAY) <= 30 && o.zalDate <= TODAY) month += o.zal;
+      if (o.dopPaid && o.dopDate && P.days(o.dopDate, TODAY) <= 30 && o.dopDate <= TODAY) month += o.brutto - o.zal;
+    });
+    P.strip(P.$('#pl-strip'), [
+      { label: 'Zaliczki do wpłaty', value: P.zl(zalOpen.reduce(function (s, o) { return s + o.zal; }, 0)), note: P.n(zalOpen.length, 'zlecenie', 'zlecenia', 'zleceń') },
+      { label: 'Montaż w 7 dni bez zaliczki', value: noZal.length, note: noZal.map(function (o) { return o.klient; }).join(', ') || 'wszyscy wpłacili', tone: noZal.length ? 'bad' : 'ok' },
+      { label: 'Dopłaty po terminie', value: P.zl(dopLate.reduce(function (s, o) { return s + o.brutto - o.zal; }, 0)), note: P.n(dopLate.length, 'klient', 'klientów', 'klientów'), tone: dopLate.length ? 'bad' : 'ok' },
+      { label: 'Wpłynęło w ostatnich 30 dniach', value: P.zl(month), note: 'zaliczki i dopłaty' }
+    ]);
+    function stat(o) {
+      if (o.st === 'koniec') {
+        if (o.dopPaid) return [3, P.chip('Rozliczone ' + P.d(o.dopDate), 'ok')];
+        if (o.dopDue < TODAY) return [0, P.chip('Dopłata po terminie ' + P.days(o.dopDue, TODAY) + ' dni', 'bad')];
+        return [2, P.chip('Dopłata do ' + P.d(o.dopDue), 'warn')];
+      }
+      if (!o.zalPaid) return [P.days(TODAY, o.start) <= 7 ? 0 : 1, P.chip('Brak zaliczki, montaż ' + P.rel(o.start), P.days(TODAY, o.start) <= 7 ? 'bad' : 'warn')];
+      return [2, P.chip('Zaliczka wpłacona ' + P.d(o.zalDate), 'ok')];
+    }
+    P.table(P.$('#pl-table'), [
+      { key: 'klient', label: 'Klient', html: function (o) { return '<b>' + P.esc(o.klient) + '</b><span class="sub">' + P.esc(o.miasto) + ', ' + stageName(o.st).toLowerCase() + '</span>'; } },
+      { key: 'brutto', label: 'Wartość', num: 1, html: function (o) { return P.zl(o.brutto); } },
+      { key: 'zal', label: 'Zaliczka 30%', num: 1, html: function (o) { return P.zl(o.zal) + '<span class="sub">' + (o.zalPaid ? 'wpłacona' : 'czeka') + '</span>'; } },
+      { key: 'dop', label: 'Dopłata', num: 1, val: function (o) { return o.brutto - o.zal; }, html: function (o) { return P.zl(o.brutto - o.zal) + '<span class="sub">' + (o.st === 'koniec' ? (o.dopPaid ? 'wpłacona' : 'termin ' + P.d(o.dopDue)) : 'po montażu') + '</span>'; } },
+      { key: 'st', label: 'Status', val: function (o) { return stat(o)[0]; }, html: function (o) { return stat(o)[1]; } },
+      { key: 'a', label: '', sort: false, html: function (o) {
+        if (!o.zalPaid) return '<div class="acts"><button class="btn sm" data-rem="' + o.id + '">Przypomnij</button><button class="btn sm" data-zal="' + o.id + '">Zaliczka wpłynęła</button></div>';
+        if (o.st === 'koniec' && !o.dopPaid) return '<div class="acts"><button class="btn sm" data-rem="' + o.id + '">Przypomnij</button><button class="btn sm" data-dop="' + o.id + '">Dopłata wpłynęła</button></div>';
+        return ''; } }
+    ], { rows: rows, sortKey: 'st' });
+    P.$$('[data-zal]').forEach(function (b) { b.onclick = function () { var o = byId(b.getAttribute('data-zal')); o.zalPaid = true; o.zalDate = TODAY; P.toast('Zaliczka zapisana: ' + o.klient + ', ' + P.zl(o.zal)); P.views.platnosci(); }; });
+    P.$$('[data-dop]').forEach(function (b) { b.onclick = function () { var o = byId(b.getAttribute('data-dop')); o.dopPaid = true; o.dopDate = TODAY; P.toast('Dopłata zapisana: ' + o.klient + ', ' + P.zl(o.brutto - o.zal)); P.views.platnosci(); }; });
+    P.$$('[data-rem]').forEach(function (b) { b.onclick = function () { var o = byId(b.getAttribute('data-rem')); P.toast('Przypomnienie SMS wysłane: ' + o.klient); }; });
+    var buckets = [['Zaliczki przed montażem', 0, 'warn'], ['Dopłaty w terminie', 0, 'ok'], ['Po terminie do 14 dni', 0, 'warn'], ['Po terminie ponad 14 dni', 0, 'bad']];
+    rows.forEach(function (o) {
+      if (!o.zalPaid) buckets[0][1] += o.zal;
+      if (o.st === 'koniec' && !o.dopPaid) { var late = P.days(o.dopDue, TODAY), v = o.brutto - o.zal; if (late <= 0) buckets[1][1] += v; else if (late <= 14) buckets[2][1] += v; else buckets[3][1] += v; }
+    });
+    P.bars(P.$('#pl-bars'), buckets.map(function (b) { return { label: b[0], value: b[1], text: P.zl(b[1]), tone: b[2] }; }));
+  };
+
+  P.views.kalkulator();
+  P.initTabs();
+})();
+</script>
+</body>
+</html>

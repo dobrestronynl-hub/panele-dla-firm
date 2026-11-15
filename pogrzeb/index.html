@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zakład pogrzebowy – panel demo</title>
+<meta name="description" content="Panel demo dla zakładu pogrzebowego: ceremonie z listą przygotowań, dokumenty, chłodnia i transport, kosztorys z zasiłkiem ZUS, rozliczenia. Dane przykładowe.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
+<link rel="stylesheet" href="../assets/panel.css">
+<style>
+  /* Szyld jak klepsydra: ciemne pole w podwójnej ramce */
+  body {
+    --sign-bg: #1F242A; --sign-fg: #EDEEF0; --sign-sub: rgba(237, 238, 240, .72);
+    --accent: #3D4A61; --accent-ink: #FFFFFF; --accent-soft: #E7EAF0; --accent-line: #3D4A61;
+  }
+  .sign { padding: 24px 34px 32px; }
+  .sign::before {
+    content: ""; position: absolute; inset: 10px; pointer-events: none;
+    border: 1px solid rgba(237, 238, 240, .26);
+    box-shadow: 0 0 0 3px var(--sign-bg), 0 0 0 4px rgba(237, 238, 240, .26);
+  }
+
+  /* Ceremonie: karty w ramce klepsydry */
+  .days { display: flex; flex-direction: column; }
+  .dayrow { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 16px; padding: 16px 0; border-top: 1px solid var(--line); }
+  .dayrow:first-child { border-top: 0; padding-top: 4px; }
+  .day-t h2 { font-size: 17px; font-weight: 720; }
+  .day-t span { display: block; font-size: 13.5px; color: var(--ink-3); }
+  .kgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+  .klep {
+    appearance: none; font: inherit; color: var(--ink); text-align: left; cursor: pointer;
+    background: var(--surface); border: 2px solid #2A3037; border-radius: 2px;
+    box-shadow: inset 0 0 0 3px var(--surface), inset 0 0 0 4px #2A3037;
+    padding: 15px 18px 16px; display: flex; flex-direction: column; gap: 4px;
+  }
+  .klep:hover { background: #FAFAFB; box-shadow: inset 0 0 0 3px #FAFAFB, inset 0 0 0 4px #2A3037; }
+  .klep-h { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .klep-time { font-size: 22px; font-weight: 720; font-stretch: 92%; font-variant-numeric: tabular-nums; }
+  .klep-name { font-size: 19px; font-weight: 720; font-stretch: 106%; line-height: 1.15; margin-top: 2px; }
+  .klep-age { font-size: 13.5px; color: var(--ink-3); }
+  .klep-place { font-size: 13.5px; color: var(--ink-2); margin-top: 4px; }
+  .klep-foot { border-top: 1px solid var(--line-soft); margin-top: 8px; padding-top: 9px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+  .klep-miss { color: var(--warn); }
+  .klep-car.bad { color: var(--bad); font-weight: 600; }
+  .empty-day { font-size: 13.5px; color: var(--ink-3); align-self: center; }
+
+  /* Chłodnia */
+  .cold { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .slot { appearance: none; font: inherit; color: var(--ink); text-align: left; border: 1px solid var(--line); border-radius: var(--r-box); background: var(--surface); padding: 10px 12px; min-height: 104px; display: flex; flex-direction: column; gap: 3px; cursor: pointer; }
+  .slot:hover { border-color: var(--accent-line); }
+  .slot-n { font-size: 12.5px; color: var(--ink-3); }
+  .slot b { font-size: 14.5px; }
+  .slot span { font-size: 12.5px; color: var(--ink-2); }
+  .slot.free { border-style: dashed; background: transparent; cursor: default; }
+  .slot.res { background: var(--info-soft); border-color: #B9CDE6; }
+  .slot.out { background: var(--warn-soft); border-color: #E9CF9D; }
+
+  /* Kosztorys */
+  .split { display: flex; height: 26px; border-radius: 4px; overflow: hidden; border: 1px solid var(--line); }
+  .split div { height: 100%; }
+  .split .zus { background: var(--accent); }
+  .split .fam { background: repeating-linear-gradient(-45deg, #D9DDE3 0 6px, #C9CED6 6px 12px); }
+  .legend { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 13px; margin-top: 7px; color: var(--ink-2); }
+  .legend b { color: var(--ink); }
+  .sum-row td { font-weight: 700; }
+  .note { font-size: 13px; color: var(--ink-2); background: var(--surface-2); border: 1px solid var(--line-soft); border-radius: 4px; padding: 9px 11px; }
+  .checks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 14px; }
+  .clist { display: flex; flex-direction: column; gap: 2px; }
+  .clist .check { padding: 6px 2px; border-bottom: 1px solid var(--line-soft); }
+
+  @media (max-width: 960px) { .cold { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 760px) { .dayrow { grid-template-columns: minmax(0, 1fr); gap: 8px; } }
+  @media (max-width: 640px) { .sign { padding: 20px 22px 26px; } .sign::before { inset: 7px; } .checks { grid-template-columns: minmax(0, 1fr); } }
+  @media print { .sign::before { display: none; } .klep { break-inside: avoid; } .cols-even { grid-template-columns: minmax(0, 1fr); } }
+</style>
+</head>
+<body>
+
+<header class="sign">
+  <div class="sign-top">
+    <a href="../index.html">Wszystkie panele</a>
+    <span class="demo-flag">Dane przykładowe</span>
+  </div>
+  <div class="sign-inner">
+    <div>
+      <h1>Twój zakład pogrzebowy</h1>
+      <p class="sign-sub">Ceremonie, dokumenty, chłodnia i transport, kosztorys z zasiłkiem ZUS</p>
+    </div>
+    <div class="sign-meta"><strong id="sign-day"></strong><span id="sign-sub"></span></div>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="Moduły panelu">
+  <div class="tabs-inner" role="tablist">
+    <button class="tab" data-tab="ceremonie">Ceremonie</button>
+    <button class="tab" data-tab="sprawy">Sprawy i dokumenty</button>
+    <button class="tab" data-tab="chlodnia">Chłodnia i transport</button>
+    <button class="tab" data-tab="kosztorys">Kosztorys</button>
+    <button class="tab" data-tab="rozliczenia">Rozliczenia</button>
+  </div>
+</nav>
+
+<main>
+  <!-- CEREMONIE -->
+  <section data-panel="ceremonie" class="stack">
+    <div id="ce-strip"></div>
+    <div class="row-between">
+      <p class="lead">Najbliższe 7 dni. Kliknij ceremonię, żeby odhaczyć przygotowania.</p>
+      <button class="btn primary" data-new>Przyjmij zgłoszenie zgonu</button>
+    </div>
+    <div class="days" id="ce-days"></div>
+  </section>
+
+  <!-- SPRAWY -->
+  <section data-panel="sprawy" class="stack">
+    <div id="sp-strip"></div>
+    <div class="box">
+      <div class="box-h"><div id="sp-filter"></div><p>Kliknij sprawę, żeby uzupełnić dokumenty</p></div>
+      <div class="box-b flush scroll-lg" id="sp-table"></div>
+    </div>
+    <div class="box">
+      <div class="box-h"><h2>Dokumenty w kolejności</h2></div>
+      <div class="box-b"><p class="lead" id="sp-order"></p></div>
+    </div>
+  </section>
+
+  <!-- CHŁODNIA -->
+  <section data-panel="chlodnia" class="stack">
+    <div id="ch-strip"></div>
+    <div class="cols">
+      <div class="box">
+        <div class="box-h"><h2>Chłodnia</h2><button class="btn sm primary" data-new>Przyjmij zgłoszenie zgonu</button></div>
+        <div class="box-b"><div class="cold" id="ch-cold"></div></div>
+      </div>
+      <div class="box">
+        <div class="box-h"><h2>Dyżur przewozowy</h2><p>całodobowy, telefon dyżurny</p></div>
+        <div class="box-b flush" id="ch-duty"></div>
+      </div>
+    </div>
+    <div class="box">
+      <div class="box-h"><h2>Samochody na 7 dni</h2><p>ceremonie, przewozy i krematorium</p></div>
+      <div class="box-b flush" id="ch-cars"></div>
+    </div>
+  </section>
+
+  <!-- KOSZTORYS -->
+  <section data-panel="kosztorys" class="stack">
+    <div class="cols-even">
+      <div class="box no-print">
+        <div class="box-h"><h2>Ustalenia z rodziną</h2><p>ceny z cennika przykładowego</p></div>
+        <div class="box-b">
+          <div class="form-grid">
+            <label class="field full"><span>Zmarły / zmarła</span><input id="k-who" value="Irena Sikorska"></label>
+            <label class="field"><span>Rodzaj pochówku</span><select id="k-rodz"></select></label>
+            <label class="field"><span>Ceremonia</span><select id="k-rel"><option value="1">Religijna</option><option value="0">Świecka</option></select></label>
+            <label class="field"><span>Trumna</span><select id="k-trumna"></select></label>
+            <label class="field" id="k-urna-f"><span>Urna</span><select id="k-urna"></select></label>
+            <label class="field" id="k-grob-f"><span>Grób</span><select id="k-grob"><option value="nowy">Nowy grób ziemny</option><option value="otw">Istniejący grób rodzinny</option></select></label>
+            <label class="field"><span>Doby w chłodni</span><input id="k-dni" type="number" min="0" max="30" value="4"></label>
+            <label class="field"><span>Przewóz, km w jedną stronę</span><input id="k-km" type="number" min="0" max="500" value="12"></label>
+            <label class="field"><span>Wieńce</span><input id="k-wien" type="number" min="0" max="20" value="2"></label>
+            <label class="field"><span>Wiązanki</span><input id="k-wiaz" type="number" min="0" max="20" value="1"></label>
+          </div>
+          <div class="checks" style="margin-top:14px">
+            <label class="check"><input type="checkbox" id="k-odz" checked> Odzież dla zmarłego</label>
+            <label class="check"><input type="checkbox" id="k-nek" checked> Klepsydry (30 szt.)</label>
+            <label class="check"><input type="checkbox" id="k-mis"> Mistrz ceremonii</label>
+            <label class="check"><input type="checkbox" id="k-org" checked> Organista</label>
+            <label class="check"><input type="checkbox" id="k-tre"> Trębacz</label>
+            <label class="check"><input type="checkbox" id="k-onl"> Transmisja ceremonii online</label>
+          </div>
+          <label class="check" style="margin-top:14px"><input type="checkbox" id="k-zus" checked> Rozliczamy zasiłek pogrzebowy z ZUS za rodzinę</label>
+        </div>
+      </div>
+      <div class="box">
+        <div class="box-h"><div><h2>Kosztorys pogrzebu</h2><p id="k-for"></p></div><div class="row no-print"><button class="btn sm" onclick="window.print()">Drukuj kosztorys</button><button class="btn sm primary" id="k-save">Zapisz w sprawie</button></div></div>
+        <div class="box-b flush" id="k-items"></div>
+        <div class="box-b" id="k-split"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ROZLICZENIA -->
+  <section data-panel="rozliczenia" class="stack">
+    <div id="ro-strip"></div>
+    <div class="box">
+      <div class="box-h"><h2>Pogrzeby po ceremonii</h2><p>zasiłek z ZUS i dopłata rodziny</p></div>
+      <div class="box-b flush" id="ro-table"></div>
+    </div>
+    <div class="cols-even">
+      <div class="box">
+        <div class="box-h"><h2>Pogrzeby i przychód</h2><p>ostatnie 6 pełnych miesięcy</p></div>
+        <div class="box-b"><div id="ro-bars"></div></div>
+      </div>
+      <div class="box">
+        <div class="box-h"><h2>Zasiłek pogrzebowy</h2></div>
+        <div class="box-b"><p class="lead" id="ro-zus"></p></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <span>Panel demo. Osoby, rodziny, miejsca i kwoty są wymyślone, zmiany znikają po odświeżeniu strony.</span>
+  <a href="../index.html">Zobacz pozostałe panele</a>
+</footer>
+
+<script src="../assets/panel.js"></script>
+<script>
+(function () {
+  'use strict';
+  var r = P.rng(7120);
+  var TODAY = P.today();
+  var NOW = 10 * 60 + 20;              /* stan panelu: 10:20 */
+
+  /* Zasiłek pogrzebowy ZUS: 7000 zł dla zgonów od 1.01.2026. Zmień tu, gdy kwota się zmieni. */
+  var ZASILEK = 7000;
+
+  /* ---------- Cennik przykładowy ---------- */
+  var CEN = {
+    trumny: [
+      { id: 't1', n: 'Trumna sosnowa, prosta', p: 1700, stan: 4 },
+      { id: 't2', n: 'Trumna olchowa, półokrągła', p: 2600, stan: 3 },
+      { id: 't3', n: 'Trumna dębowa, rzeźbiona', p: 4200, stan: 1 },
+      { id: 't4', n: 'Trumna do kremacji, sosnowa', p: 950, stan: 6, krem: true },
+      { id: 't5', n: 'Trumna do kremacji, z okleiną', p: 1300, stan: 0, krem: true }
+    ],
+    urny: [
+      { id: 'u1', n: 'Urna ceramiczna', p: 450, stan: 5 },
+      { id: 'u2', n: 'Urna metalowa, grawerowana', p: 780, stan: 2 },
+      { id: 'u3', n: 'Urna drewniana, orzech', p: 620, stan: 0 }
+    ],
+    przewoz: 450, kmFree: 30, kmRate: 3.5, chlodnia: 70, przyg: 450, odziez: 380, krem: 1100, karawan: 650,
+    grob: { nowy: 1100, otw: 1400, urna: 450, kol: 600 },
+    wieniec: 290, wiazanka: 160, mistrz: 450, organista: 350, trebacz: 450, nekrolog: 140, online: 400
+  };
+  var RODZ = { trad: 'Pochówek w trumnie', 'krem-grob': 'Kremacja, urna do grobu', 'krem-kol': 'Kremacja, urna w kolumbarium' };
+  function item(list, id) { return list.filter(function (x) { return x.id === id; })[0]; }
+  function calc(o) {
+    var it = [], krem = o.rodz !== 'trad';
+    var km = Math.max(0, o.km - CEN.kmFree);
+    it.push(['Przewóz zmarłego do chłodni' + (km ? ', ' + km + ' km ponad ' + CEN.kmFree : ''), CEN.przewoz + km * CEN.kmRate]);
+    if (o.dni) it.push(['Chłodnia, ' + P.n(o.dni, 'doba', 'doby', 'dób'), o.dni * CEN.chlodnia]);
+    it.push(['Przygotowanie zmarłego do pochówku', CEN.przyg]);
+    if (o.odz) it.push(['Odzież dla zmarłego', CEN.odziez]);
+    var t = item(CEN.trumny, o.trumna); it.push([t.n, t.p]);
+    if (krem) { it.push(['Kremacja', CEN.krem]); var u = item(CEN.urny, o.urna); it.push([u.n, u.p]); }
+    it.push(['Karawan na ceremonię', CEN.karawan]);
+    if (o.rodz === 'trad') it.push([o.grob === 'otw' ? 'Otwarcie i zamknięcie grobu rodzinnego' : 'Wykopanie grobu ziemnego', CEN.grob[o.grob]]);
+    else it.push([o.rodz === 'krem-kol' ? 'Złożenie urny w kolumbarium' : 'Złożenie urny do grobu', o.rodz === 'krem-kol' ? CEN.grob.kol : CEN.grob.urna]);
+    if (o.wien) it.push(['Wieńce, ' + o.wien + ' szt.', o.wien * CEN.wieniec]);
+    if (o.wiaz) it.push(['Wiązanki, ' + o.wiaz + ' szt.', o.wiaz * CEN.wiazanka]);
+    if (o.mis) it.push(['Mistrz ceremonii', CEN.mistrz]);
+    if (o.org) it.push(['Organista', CEN.organista]);
+    if (o.tre) it.push(['Trębacz', CEN.trebacz]);
+    if (o.nek) it.push(['Klepsydry, 30 szt.', CEN.nekrolog]);
+    if (o.onl) it.push(['Transmisja ceremonii online', CEN.online]);
+    var total = it.reduce(function (s, x) { return s + x[1]; }, 0);
+    var zus = o.zus ? Math.min(total, ZASILEK) : 0;
+    return { items: it, total: total, zus: zus, fam: total - zus };
+  }
+
+  /* ---------- Dane przykładowe ---------- */
+  function cday(n) { var d = P.addDays(TODAY, n); if (d.getDay() === 0) d = P.addDays(d, 1); return d; }
+  var STAFF = { andrzej: 'Andrzej, mistrz ceremonii', marek: 'Marek, kierowca', piotr: 'Piotr, kierowca', ewa: 'Ewa, biuro' };
+  var CARS = [{ id: 'k1', n: 'Karawan 1', drv: 'Marek' }, { id: 'k2', n: 'Karawan 2', drv: 'Piotr' }, { id: 'bus', n: 'Bus przewozowy', drv: 'dyżurny' }];
+  var KOS = 'Kościół pw. św. Józefa', KOS2 = 'Kościół pw. św. Anny', KAP = 'Kaplica na Cmentarzu Komunalnym', SALA = 'Sala pożegnań w naszym domu pogrzebowym';
+  var PAR = 'Cmentarz Parafialny', KOM = 'Cmentarz Komunalny', KOL = 'Cmentarz Komunalny, kolumbarium';
+  /* [imię i nazwisko, k/m, wiek, zgon (dni temu), skąd, rodzaj, religijna, miejsce, cmentarz, ceremonia: [dzień, godzina] lub null, kontakt] */
+  var SRC = [
+    ['Jan Wiśniewski', 'm', 84, 4, 'Szpital Miejski', 'trad', 1, KOS, PAR, [0, 13 * 60], 'syn, Tomasz Wiśniewski'],
+    ['Halina Kaczmarek', 'k', 91, 3, 'z domu', 'krem-grob', 1, KAP, KOM, [1, 10 * 60], 'córka, Anna Kaczmarek-Lis'],
+    ['Stanisław Zieliński', 'm', 77, 3, 'Szpital Wojewódzki', 'trad', 1, KOS2, PAR, [1, 11 * 60], 'żona, Teresa Zielińska'],
+    ['Zofia Mazur', 'k', 88, 2, 'Dom Pomocy Społecznej', 'krem-kol', 0, SALA, KOL, [1, 12 * 60 + 30], 'wnuk, Kamil Mazur'],
+    ['Henryk Wróbel', 'm', 69, 2, 'z domu', 'trad', 1, KOS, PAR, [2, 11 * 60], 'syn, Paweł Wróbel'],
+    ['Janina Lewandowska', 'k', 95, 1, 'Szpital Miejski', 'trad', 1, KAP, KOM, [3, 10 * 60], 'córka, Elżbieta Nowicka'],
+    ['Tadeusz Kamiński', 'm', 81, 1, 'z domu', 'krem-grob', 0, SALA, KOM, [3, 14 * 60], 'córka, Magdalena Kamińska'],
+    ['Krystyna Dąbrowska', 'k', 74, 1, 'Szpital Wojewódzki', 'trad', 1, KOS2, PAR, [4, 12 * 60], 'mąż, Jerzy Dąbrowski'],
+    ['Zbigniew Pawlak', 'm', 63, 0, 'Hospicjum', 'krem-kol', 1, KOS2, KOL, [5, 11 * 60], 'żona, Iwona Pawlak'],
+    ['Irena Sikorska', 'k', 86, 0, 'z domu', 'trad', 1, null, null, null, 'córka, Beata Sikorska'],
+    /* po ceremonii: koszt, ZUS [status, dni temu], dopłata [status, dzień] */
+    ['Józef Kubiak', 'm', 90, 6, 'Szpital Miejski', 'trad', 1, KOS, PAR, [-2, 11 * 60], 'syn, Adam Kubiak', 8650, ['zlozony', 1], ['do', 12]],
+    ['Barbara Wysocka', 'k', 79, 9, 'z domu', 'krem-grob', 1, KAP, KOM, [-5, 13 * 60], 'córka, Ewa Wysocka', 6900, ['wyplacony', 1], null],
+    ['Ryszard Głowacki', 'm', 72, 12, 'Szpital Wojewódzki', 'trad', 1, KOS2, PAR, [-8, 12 * 60], 'żona, Grażyna Głowacka', 10200, ['wyplacony', 2], ['ok', -6]],
+    ['Maria Borkowska', 'k', 93, 15, 'Dom Pomocy Społecznej', 'trad', 1, KAP, KOM, [-11, 10 * 60], 'siostrzeniec, Leszek Bąk', 7400, ['brak', 0], ['do', -1]],
+    ['Edward Sobczak', 'm', 66, 20, 'Hospicjum', 'krem-kol', 0, SALA, KOL, [-16, 14 * 60], 'żona, Lucyna Sobczak', 7650, ['wyplacony', 9], ['ok', -14]],
+    ['Genowefa Jasińska', 'k', 97, 27, 'z domu', 'trad', 1, KOS, PAR, [-23, 11 * 60], 'wnuczka, Paulina Jasińska', 8200, ['zlozony', 19], ['ok', -20]]
+  ];
+  var CASES = SRC.map(function (s, i) {
+    var c = { id: 'c' + i, n: s[0], k: s[1] === 'k', age: s[2], died: P.addDays(TODAY, -s[3]), from: s[4], rodz: s[5], relig: !!s[6], place: s[7], cem: s[8],
+      cer: s[9] ? cday(s[9][0]) : null, time: s[9] ? s[9][1] : null, contact: s[10], done: {} };
+    c.krem = c.rodz !== 'trad';
+    c.opts = { rodz: c.rodz, trumna: c.krem ? 't4' : (i % 3 === 1 ? 't3' : 't2'), urna: i % 2 ? 'u2' : 'u1', grob: i % 2 ? 'otw' : 'nowy', dni: c.cer ? Math.max(1, P.days(c.died, c.cer)) : 4, km: P.int(r, 4, 26),
+      wien: P.int(r, 1, 3), wiaz: P.int(r, 0, 2), odz: true, nek: true, mis: !c.relig, org: c.relig, tre: i % 4 === 0, onl: i % 5 === 3, zus: true };
+    c.cost = s[11] || calc(c.opts).total;
+    c.past = !!(c.cer && P.days(TODAY, c.cer) < 0);
+    if (c.past) {
+      c.zus = s[12][0]; c.zusD = P.addDays(TODAY, -s[12][1]);
+      var zp = Math.min(c.cost, ZASILEK);
+      c.fam = c.cost - zp;
+      c.dop = s[13] ? s[13][0] : (c.fam ? 'do' : 'brak'); c.dopD = s[13] ? P.addDays(TODAY, s[13][1]) : null;
+    }
+    return c;
+  });
+  function cs(id) { return CASES.filter(function (c) { return c.id === id; })[0]; }
+  function untilDays(c) { return c.cer ? P.days(TODAY, c.cer) : null; }
+
+  /* lista przygotowań do ceremonii */
+  function checklist(c) {
+    var L = [
+      ['karta', 'Karta zgonu odebrana'],
+      ['akt', 'Zgon zarejestrowany w USC, akt zgonu'],
+      ['termin', c.relig ? 'Termin w parafii i msza ustalone' : 'Termin ceremonii ustalony'],
+      ['grob', c.rodz === 'krem-kol' ? 'Nisza w kolumbarium zarezerwowana' : (c.krem ? 'Grób przygotowany do złożenia urny' : 'Grób wykopany lub otwarty')],
+      ['ubranie', 'Zmarły przygotowany i ubrany']
+    ];
+    if (c.krem) L.push(['krem', 'Kremacja wykonana, urna odebrana']);
+    L.push([c.krem ? 'urna' : 'trumna', c.krem ? 'Urna wydana z magazynu' : 'Trumna wydana z magazynu']);
+    L.push(['nekrolog', 'Klepsydry wydrukowane i rozwieszone'], ['kwiaty', 'Wieńce i wiązanki zamówione'], ['muzyka', c.relig ? 'Organista potwierdzony' : 'Mistrz ceremonii i muzyka potwierdzone']);
+    return L;
+  }
+  var DOCS = [['karta', 'Karta zgonu'], ['akt', 'Akt zgonu z USC'], ['wkrem', 'Wniosek o kremację'], ['upow', 'Upoważnienie do rozliczenia zasiłku'], ['z12', 'Wniosek ZUS Z-12']];
+  function docsFor(c) { return DOCS.filter(function (d) { return d[0] !== 'wkrem' || c.krem; }); }
+
+  CASES.forEach(function (c, i) {
+    var L = checklist(c), u = untilDays(c);
+    var f = c.past ? 1 : (u == null ? 0.1 : [1, 0.8, 0.7, 0.6, 0.45, 0.35, 0.3][Math.min(6, u)]);
+    var k = Math.round(L.length * f);
+    L.forEach(function (x, j) { c.done[x[0]] = j < k; });
+    if (c.krem && !c.past && u != null) c.done.krem = c.done.urna = u <= 1;   /* kremacja dzień przed ceremonią */
+    if (u === 1 && i === 2) c.done.grob = false;     /* jutro: grób jeszcze nieprzygotowany */
+    c.done.wkrem = c.krem && (c.past || (u != null && u <= 4));
+    c.done.upow = c.past ? c.zus !== 'brak' : (i % 4 !== 1);
+    c.done.z12 = c.past && c.zus !== 'brak';
+  });
+
+  /* karawany: zajęty od godziny przed ceremonią do 3 godzin po */
+  var upcoming = CASES.filter(function (c) { return c.cer && !c.past; }).sort(function (a, b) { return (a.cer - b.cer) || (a.time - b.time); });
+  upcoming.forEach(function (c) {
+    var busy = upcoming.filter(function (o) { return o !== c && o.car && +o.cer === +c.cer && Math.abs(o.time - c.time) < 180; }).map(function (o) { return o.car; });
+    c.car = ['k1', 'k2'].filter(function (k) { return busy.indexOf(k) < 0; })[0] || null;
+  });
+
+  /* przewozy i krematorium (bus) */
+  var TRIPS = [];
+  CASES.forEach(function (c) {
+    if (P.days(c.died, TODAY) === 0) TRIPS.push({ car: 'bus', d: TODAY, t: c.cer ? 11 * 60 + 30 : 14 * 60, txt: c.from === 'z domu' ? 'przewóz z domu' : 'przewóz: ' + c.from, c: c });
+    if (c.krem && !c.past && !c.done.krem && c.cer) TRIPS.push({ car: 'bus', d: cday(Math.max(1, untilDays(c) - 1)), t: 9 * 60, txt: 'do krematorium', c: c });
+  });
+  var SERVICE = { car: 'k2', d: cday(4), txt: 'Przegląd techniczny' };
+
+  /* chłodnia: 8 komór */
+  var COLD = [];
+  var inCold = CASES.filter(function (c) { return !c.past && (!c.krem || !c.done.krem); });
+  for (var ci = 0; ci < 8; ci++) COLD.push(inCold[ci] ? inCold[ci].id : null);
+  CASES.forEach(function (c) { var s = COLD.indexOf(c.id); c.slot = s >= 0 ? s + 1 : null; });
+
+  /* przychód z 6 miesięcy */
+  var HIST = [];
+  for (var m = 6; m >= 1; m--) {
+    var dt = new Date(TODAY.getFullYear(), TODAY.getMonth() - m, 1), n = P.int(r, 10, 17);
+    HIST.push({ l: P.MON[dt.getMonth()] + ' ' + dt.getFullYear(), n: n, rev: n * P.int(r, 7600, 8900) });
+  }
+
+  P.$('#sign-day').textContent = P.dayTitle(TODAY);
+  P.$('#sign-sub').textContent = 'Dyżur przewozowy: Piotr, ' + upcoming.length + ' ' + P.plural(upcoming.length, 'ceremonia', 'ceremonie', 'ceremonii') + ' w 7 dni';
+
+  function ready(c) { var L = checklist(c); var d = L.filter(function (x) { return c.done[x[0]]; }).length; return { d: d, n: L.length, miss: L.filter(function (x) { return !c.done[x[0]]; }) }; }
+  function whenTxt(c) { return c.cer ? P.dowS(c.cer) + ' ' + P.d(c.cer) + ', ' + P.hm(c.time) : 'termin do ustalenia'; }
+  function ageTxt(c) { return c.age ? P.n(c.age, 'rok', 'lata', 'lat') : 'wiek do uzupełnienia'; }
+  function carName(id) { return CARS.filter(function (x) { return x.id === id; })[0]; }
+
+  /* ---------- CEREMONIE ---------- */
+  P.views.ceremonie = function () {
+    var soon = upcoming.filter(function (c) { return untilDays(c) <= 1; });
+    var miss = soon.reduce(function (s, c) { return s + ready(c).miss.length; }, 0);
+    var noCar = upcoming.filter(function (c) { return !c.car; });
+    var noDate = CASES.filter(function (c) { return !c.cer; });
+    var todayC = upcoming.filter(function (c) { return untilDays(c) === 0; });
+    P.strip(P.$('#ce-strip'), [
+      { label: 'Ceremonie w 7 dni', value: upcoming.length, note: todayC.length ? 'dziś: ' + todayC.map(function (c) { return P.hm(c.time) + ' ' + c.n; }).join(', ') : 'dziś bez ceremonii' },
+      { label: 'Do dopięcia na dziś i jutro', value: miss, note: miss ? P.plural(miss, 'sprawa', 'sprawy', 'spraw') + ' z listy przygotowań' : 'wszystko gotowe', tone: miss ? 'warn' : 'ok' },
+      { label: 'Ceremonie bez karawanu', value: noCar.length, note: noCar.length ? noCar.map(function (c) { return P.dowS(c.cer) + ' ' + P.hm(c.time); }).join(', ') + ', oba karawany zajęte' : 'każda ma samochód', tone: noCar.length ? 'bad' : 'ok' },
+      { label: 'Bez ustalonego terminu', value: noDate.length, note: noDate.map(function (c) { return c.n; }).join(', ') || 'brak', tone: noDate.length ? 'warn' : '' }
+    ]);
+    var h = '';
+    for (var i = 0; i < 7; i++) {
+      var d = P.addDays(TODAY, i), list = upcoming.filter(function (c) { return +c.cer === +d; });
+      var title = i === 0 ? 'Dziś' : i === 1 ? 'Jutro' : P.dow(d).charAt(0).toUpperCase() + P.dow(d).slice(1);
+      h += '<div class="dayrow"><div class="day-t"><h2>' + title + '</h2><span>' + P.dLong(d) + (list.length ? ', ' + P.n(list.length, 'ceremonia', 'ceremonie', 'ceremonii') : '') + '</span></div>';
+      if (!list.length) { h += '<p class="empty-day">' + (d.getDay() === 0 ? 'Niedziela, ceremonii nie planujemy.' : 'Brak ceremonii. Wolny termin dla nowych rodzin.') + '</p></div>'; continue; }
+      h += '<div class="kgrid">' + list.map(card).join('') + '</div></div>';
+    }
+    P.$('#ce-days').innerHTML = h;
+    P.$$('#ce-days .klep').forEach(function (b) { b.onclick = function () { openCer(cs(b.getAttribute('data-id'))); }; });
+  };
+  function card(c) {
+    var rd = ready(c), u = untilDays(c), car = c.car ? carName(c.car) : null;
+    var tone = rd.d === rd.n ? 'ok' : (u <= 1 ? 'warn' : '');
+    return '<button class="klep" data-id="' + c.id + '">' +
+      '<div class="klep-h"><span class="klep-time">' + P.hm(c.time) + '</span>' + (rd.d === rd.n ? P.chip('Gotowe', 'ok') : P.chip('Do dopięcia: ' + rd.miss.length, u <= 1 ? 'warn' : 'info')) + '</div>' +
+      '<div class="klep-name">' + P.esc(c.n) + '</div>' +
+      '<div class="klep-age">' + ageTxt(c) + ', zm. ' + P.d(c.died) + '. ' + RODZ[c.rodz] + (c.relig ? '' : ', ceremonia świecka') + '</div>' +
+      '<div class="klep-place">' + P.esc(c.place) + '<br>' + P.esc(c.cem) + '</div>' +
+      '<div class="klep-foot">' + P.prog(rd.d / rd.n * 100, tone, rd.d + ' z ' + rd.n) +
+      (rd.miss.length ? '<span class="klep-miss">' + rd.miss.slice(0, 2).map(function (x) { return x[1]; }).join('; ') + (rd.miss.length > 2 ? '; i ' + (rd.miss.length - 2) + ' więcej' : '') + '</span>' : '<span>Kontakt: ' + P.esc(c.contact) + '</span>') +
+      '<span class="klep-car' + (car ? '' : ' bad') + '">' + (car ? car.n + ', kierowca ' + car.drv : 'Brak wolnego karawanu, przesuń godzinę albo wynajmij') + '</span></div></button>';
+  }
+  function openCer(c) {
+    var L = checklist(c);
+    var body = '<dl class="kv"><dt>Ceremonia</dt><dd>' + whenTxt(c) + ' (' + P.rel(c.cer) + ')</dd><dt>Miejsce</dt><dd>' + P.esc(c.place) + '</dd><dt>Pochówek</dt><dd>' + P.esc(c.cem) + ', ' + RODZ[c.rodz].toLowerCase() + '</dd>' +
+      '<dt>Kontakt</dt><dd>' + P.esc(c.contact) + '</dd><dt>Chłodnia</dt><dd>' + (c.slot ? 'komora ' + c.slot : (c.krem && c.done.krem ? 'urna gotowa' : 'nie')) + '</dd></dl>' +
+      '<h3 style="font-size:14.5px;margin:16px 0 4px">Przygotowania</h3><div class="clist">' +
+      L.map(function (x) { return '<label class="check"><input type="checkbox" data-k="' + x[0] + '"' + (c.done[x[0]] ? ' checked' : '') + '> ' + x[1] + '</label>'; }).join('') + '</div>';
+    P.modal({ title: c.n, sub: ageTxt(c) + ', ' + RODZ[c.rodz].toLowerCase() + (c.relig ? '' : ', ceremonia świecka'), body: body, actions: [
+      { label: 'Anuluj', ghost: true },
+      { label: 'Zapisz przygotowania', primary: true, onClick: function (close, d) {
+        P.$$('input[data-k]', d).forEach(function (i) { c.done[i.getAttribute('data-k')] = i.checked; });
+        var rd = ready(c); close(); P.toast(c.n + ': ' + rd.d + ' z ' + rd.n + ' gotowe'); P.refresh();
+      } }
+    ] });
+  }
+
+  /* zgłoszenie zgonu: przyjęcie do chłodni i przewóz */
+  function newCase() {
+    var body = '<div class="form-grid">' +
+      '<label class="field full"><span>Zmarły / zmarła, imię i nazwisko</span><input id="n-n" placeholder="Np. Jan Kowalski"></label>' +
+      '<label class="field"><span>Wiek</span><input id="n-a" type="number" min="0" max="120" placeholder="Np. 82"></label>' +
+      '<label class="field"><span>Skąd odebrać</span><select id="n-f"><option>z domu</option><option>Szpital Miejski</option><option>Szpital Wojewódzki</option><option>Hospicjum</option><option>Dom Pomocy Społecznej</option></select></label>' +
+      '<label class="field"><span>Osoba z rodziny</span><input id="n-c" placeholder="Np. syn, Adam Kowalski"></label>' +
+      '<label class="field"><span>Przewóz</span><select id="n-t"><option value="0">Jak najszybciej</option><option value="1">Jutro rano</option></select></label>' +
+      '<p class="full small" id="n-err" style="color:var(--bad)"></p></div>';
+    P.modal({ title: 'Przyjmij zgłoszenie zgonu', sub: 'Przydzielimy komorę w chłodni i przewóz', body: body, actions: [
+      { label: 'Anuluj', ghost: true },
+      { label: 'Przyjmij zgłoszenie', primary: true, onClick: function (close, d) {
+        var n = P.$('#n-n', d).value.trim(), cn = P.$('#n-c', d).value.trim();
+        if (!n) { P.$('#n-err', d).textContent = 'Wpisz imię i nazwisko zmarłego.'; return; }
+        if (!cn) { P.$('#n-err', d).textContent = 'Wpisz osobę z rodziny, z którą ustalamy szczegóły.'; return; }
+        var c = { id: 'c' + CASES.length, n: n, k: /a$/.test(n.split(' ')[0]), age: +P.$('#n-a', d).value || 0, died: TODAY, from: P.$('#n-f', d).value, rodz: 'trad', relig: true, place: null, cem: null, cer: null, time: null, contact: cn, done: {}, krem: false };
+        c.cost = calc({ rodz: 'trad', trumna: 't2', urna: 'u1', grob: 'nowy', dni: 4, km: 10, wien: 2, wiaz: 1, odz: true, nek: true, org: true, zus: true }).total;
+        CASES.push(c);
+        var free = COLD.indexOf(null), msg;
+        if (free >= 0) { COLD[free] = c.id; c.slot = free + 1; msg = 'komora ' + c.slot; }
+        else {
+          var after = upcoming.filter(function (o) { return untilDays(o) === 0 && o.slot; })[0];
+          if (after) { msg = 'komora ' + after.slot + ' po dzisiejszej ceremonii'; c.slotAfter = after.slot; }
+          else msg = 'brak wolnej komory, zostaje w chłodni szpitala';
+        }
+        var later = +P.$('#n-t', d).value;
+        var day0 = later ? P.addDays(TODAY, 1) : TODAY, t0 = later ? 8 * 60 : Math.ceil((NOW + 60) / 30) * 30;
+        TRIPS.filter(function (t) { return t.car === 'bus' && +t.d === +day0; }).forEach(function (t) { if (Math.abs(t.t - t0) < 90) t0 = t.t + 90; });
+        TRIPS.push({ car: 'bus', d: day0, t: t0, txt: c.from === 'z domu' ? 'przewóz z domu' : 'przewóz: ' + c.from, c: c });
+        close(); P.toast('Przyjęto: ' + n + '. Przewóz ' + (later ? 'jutro' : 'dziś') + ' ' + P.hm(t0) + ', ' + msg); P.refresh();
+      } }
+    ] });
+  }
+  P.$$('[data-new]').forEach(function (b) { b.addEventListener('click', newCase); });
+
+  /* ---------- SPRAWY ---------- */
+  var spF = 'all';
+  function docState(c) { var D = docsFor(c); var miss = D.filter(function (x) { return !c.done[x[0]]; }); return { d: D.length - miss.length, n: D.length, miss: miss }; }
+  function nextStep(c) {
+    var m = docState(c).miss[0];
+    if (!m) return c.past && c.zus !== 'wyplacony' ? 'Czekamy na wypłatę zasiłku z ZUS' : 'Komplet dokumentów';
+    return { karta: 'Odebrać kartę zgonu (' + (c.from === 'z domu' ? 'lekarz rodzinny' : c.from) + ')', akt: 'Zarejestrować zgon w USC', wkrem: 'Podpisać z rodziną wniosek o kremację',
+      upow: 'Podpisać z rodziną upoważnienie do zasiłku', z12: c.past ? 'Złożyć wniosek Z-12 w ZUS' : 'Wniosek Z-12 po ceremonii' }[m[0]];
+  }
+  P.views.sprawy = function () {
+    var open = CASES.filter(function (c) { return !c.past || c.zus !== 'wyplacony'; });
+    var missDocs = open.filter(function (c) { var m = docState(c).miss.filter(function (x) { return x[0] !== 'z12'; }); return m.length; });
+    var noUpow = open.filter(function (c) { return !c.done.upow; });
+    var zusWait = CASES.filter(function (c) { return c.past && c.zus === 'zlozony'; });
+    P.strip(P.$('#sp-strip'), [
+      { label: 'Otwarte sprawy', value: open.length, note: 'od zgłoszenia do wypłaty zasiłku' },
+      { label: 'Brakuje dokumentów', value: missDocs.length, note: 'poza wnioskiem do ZUS', tone: missDocs.length ? 'warn' : 'ok' },
+      { label: 'Bez upoważnienia do zasiłku', value: noUpow.length, note: noUpow.length ? 'rodzina musi podpisać' : 'wszystkie podpisane', tone: noUpow.length ? 'warn' : 'ok' },
+      { label: 'Wnioski czekają w ZUS', value: zusWait.length, note: P.zl(zusWait.reduce(function (s, c) { return s + Math.min(c.cost, ZASILEK); }, 0)) }
+    ]);
+    P.seg(P.$('#sp-filter'), [{ v: 'all', l: 'Otwarte' }, { v: 'miss', l: 'Brakuje dokumentów' }, { v: 'before', l: 'Przed ceremonią' }, { v: 'after', l: 'Po ceremonii' }], spF, function (v) { spF = v; P.views.sprawy(); });
+    var rows = open.filter(function (c) {
+      if (spF === 'miss') return missDocs.indexOf(c) >= 0;
+      if (spF === 'before') return !c.past;
+      if (spF === 'after') return c.past;
+      return true;
+    });
+    P.table(P.$('#sp-table'), [
+      { key: 'n', label: 'Zmarły / zmarła', html: function (c) { return '<b>' + P.esc(c.n) + '</b><span class="sub">' + ageTxt(c) + ', zm. ' + P.d(c.died) + ', ' + P.esc(c.from) + '</span>'; } },
+      { key: 'contact', label: 'Rodzina' },
+      { key: 'cer', label: 'Ceremonia', val: function (c) { return c.cer ? +c.cer + c.time : null; }, html: function (c) { return c.cer ? whenTxt(c) + '<span class="sub">' + P.rel(c.cer) + '</span>' : P.chip('do ustalenia', 'warn'); } },
+      { key: 'docs', label: 'Dokumenty', val: function (c) { var s = docState(c); return s.d / s.n; }, html: function (c) { var s = docState(c); return P.prog(s.d / s.n * 100, s.miss.length ? '' : 'ok', s.d + ' z ' + s.n); } },
+      { key: 'next', label: 'Następny krok', val: nextStep, html: function (c) { var t = nextStep(c), m = docState(c).miss.length; return m ? t : '<span class="muted">' + t + '</span>'; } }
+    ], { rows: rows, sortKey: 'cer', onRow: openDocs, empty: 'Brak spraw w tym widoku.' });
+    P.$('#sp-order').innerHTML = 'Karta zgonu od lekarza, potem rejestracja zgonu w USC i akt zgonu. Przy kremacji rodzina podpisuje wniosek o kremację. Upoważnienie pozwala nam rozliczyć zasiłek pogrzebowy bezpośrednio z ZUS, a wniosek Z-12 składamy po ceremonii, razem z rachunkiem. ' +
+      'Zasiłek wynosi ' + P.zl(ZASILEK) + ' i trzeba o niego wystąpić w ciągu 12 miesięcy od dnia śmierci.';
+  };
+  function openDocs(c) {
+    var D = docsFor(c);
+    var body = '<dl class="kv"><dt>Rodzina</dt><dd>' + P.esc(c.contact) + '</dd><dt>Ceremonia</dt><dd>' + whenTxt(c) + '</dd><dt>Rodzaj</dt><dd>' + RODZ[c.rodz] + '</dd>' +
+      '<dt>Koszt pogrzebu</dt><dd>' + P.zl(c.cost) + ', zasiłek pokrywa ' + P.zl(Math.min(c.cost, ZASILEK)) + '</dd></dl>' +
+      '<h3 style="font-size:14.5px;margin:16px 0 4px">Dokumenty</h3><div class="clist">' +
+      D.map(function (x) { return '<label class="check"><input type="checkbox" data-k="' + x[0] + '"' + (c.done[x[0]] ? ' checked' : '') + '> ' + x[1] + '</label>'; }).join('') + '</div>';
+    P.modal({ title: c.n, sub: 'Sprawa i dokumenty', body: body, actions: [
+      { label: 'Anuluj', ghost: true },
+      { label: 'Zapisz dokumenty', primary: true, onClick: function (close, d) {
+        P.$$('input[data-k]', d).forEach(function (i) { c.done[i.getAttribute('data-k')] = i.checked; });
+        if (c.past && c.done.z12 && c.zus === 'brak') { c.zus = 'zlozony'; c.zusD = TODAY; }
+        close(); P.toast('Zapisano dokumenty: ' + c.n); P.refresh();
+      } }
+    ] });
+  }
+
+  /* ---------- CHŁODNIA I TRANSPORT ---------- */
+  P.views.chlodnia = function () {
+    var used = COLD.filter(Boolean).length;
+    var outToday = upcoming.filter(function (c) { return untilDays(c) === 0 && c.slot; });
+    var outTom = CASES.filter(function (c) { return c.slot && c.cer && untilDays(c) === 1; });
+    var tripsWeek = TRIPS.filter(function (t) { return P.days(TODAY, t.d) >= 0 && P.days(TODAY, t.d) < 7; });
+    P.strip(P.$('#ch-strip'), [
+      { label: 'Komory zajęte', value: used + ' z ' + COLD.length, note: used === COLD.length ? (outToday.length ? 'komora ' + outToday[0].slot + ' zwolni się dziś po ' + P.hm(outToday[0].time) : 'brak wolnych') : (COLD.length - used) + ' wolne', tone: used === COLD.length ? 'warn' : 'ok' },
+      { label: 'Wydanie na ceremonię jutro', value: outTom.length, note: outTom.map(function (c) { return 'k. ' + c.slot; }).join(', ') || 'brak' },
+      { label: 'Przewozy i krematorium', value: tripsWeek.length, note: 'w ciągu 7 dni, bus przewozowy' },
+      { label: 'Dyżur dziś w nocy', value: 'Piotr', note: 'od 18:00 do 7:00' }
+    ]);
+    P.$('#ch-cold').innerHTML = COLD.map(function (id, i) {
+      var c = id ? cs(id) : null;
+      if (!c) return '<div class="slot free"><span class="slot-n">Komora ' + (i + 1) + '</span><b>Wolna</b></div>';
+      var arriving = P.days(c.died, TODAY) === 0 && TRIPS.some(function (t) { return t.c === c && +t.d === +TODAY && t.t > NOW; });
+      var u = untilDays(c);
+      var nx = c.cer ? (c.krem && !c.done.krem ? 'kremacja przed ceremonią ' + P.d(c.cer) : 'ceremonia ' + P.rel(c.cer) + ', ' + P.hm(c.time)) : 'termin do ustalenia';
+      return '<button class="slot' + (arriving ? ' res' : '') + (u === 0 ? ' out' : '') + '" data-id="' + c.id + '"><span class="slot-n">Komora ' + (i + 1) + (arriving ? ', przewóz w drodze' : '') + '</span><b>' + P.esc(c.n) + '</b>' +
+        '<span>' + (arriving ? 'przyjęcie dziś' : 'od ' + P.d(c.died) + ', ' + P.n(Math.max(1, P.days(c.died, TODAY)), 'doba', 'doby', 'dób')) + '</span><span>' + nx + '</span></button>';
+    }).join('');
+    P.$$('#ch-cold .slot[data-id]').forEach(function (b) { b.onclick = function () { var c = cs(b.getAttribute('data-id')); if (c.cer) openCer(c); else openDocs(c); }; });
+
+    var days = []; for (var i = 0; i < 7; i++) days.push(P.addDays(TODAY, i));
+    function cell(car, d) {
+      var ev = [];
+      upcoming.filter(function (c) { return c.car === car && +c.cer === +d; }).forEach(function (c) { ev.push([c.time, P.hm(c.time) + ' ceremonia (' + c.n.split(' ').slice(-1)[0] + ')']); });
+      TRIPS.filter(function (t) { return t.car === car && +t.d === +d; }).forEach(function (t) { ev.push([t.t, P.hm(t.t) + ' ' + t.txt + ' (' + t.c.n.split(' ').slice(-1)[0] + ')']); });
+      if (SERVICE.car === car && +SERVICE.d === +d) ev.push([0, SERVICE.txt]);
+      ev.sort(function (a, b) { return a[0] - b[0]; });
+      return ev.length ? ev.map(function (e) { return '<span style="display:block;margin:2px 0">' + P.esc(e[1]) + '</span>'; }).join('') : '<span class="muted">wolny</span>';
+    }
+    P.table(P.$('#ch-cars'), [{ key: 'n', label: 'Samochód', sort: false, html: function (c) { return '<b>' + c.n + '</b><span class="sub">' + (c.drv === 'dyżurny' ? 'kierowca dyżurny' : 'kierowca ' + c.drv) + '</span>'; } }].concat(days.map(function (d, i) {
+      return { key: 'd' + i, label: (i === 0 ? 'dziś' : P.dowS(d)) + ' ' + P.d(d), sort: false, html: function (c) { return cell(c.id, d); } };
+    })), { rows: CARS });
+    var duty = days.map(function (d, i) { return { d: d, who: i % 2 ? 'Marek' : 'Piotr', back: i % 2 ? 'Piotr' : 'Marek' }; });
+    P.table(P.$('#ch-duty'), [
+      { key: 'd', label: 'Noc', sort: false, html: function (x) { return (P.days(TODAY, x.d) === 0 ? 'dziś' : P.dowS(x.d)) + ' ' + P.d(x.d); } },
+      { key: 'who', label: 'Dyżur', sort: false, html: function (x) { return '<b>' + x.who + '</b>'; } },
+      { key: 'back', label: 'Zastępstwo', sort: false }
+    ], { rows: duty });
+  };
+
+  /* ---------- KOSZTORYS ---------- */
+  function kVal() {
+    function v(id) { return P.$('#' + id).value; }
+    function c(id) { return P.$('#' + id).checked; }
+    return { who: v('k-who').trim(), rodz: v('k-rodz'), relig: v('k-rel') === '1', trumna: v('k-trumna'), urna: v('k-urna'), grob: v('k-grob'), dni: Math.max(0, +v('k-dni') || 0), km: Math.max(0, +v('k-km') || 0),
+      wien: Math.max(0, +v('k-wien') || 0), wiaz: Math.max(0, +v('k-wiaz') || 0), odz: c('k-odz'), nek: c('k-nek'), mis: c('k-mis'), org: c('k-org'), tre: c('k-tre'), onl: c('k-onl'), zus: c('k-zus') };
+  }
+  function kFill() {
+    var rodz = P.$('#k-rodz').value || 'trad', krem = rodz !== 'trad', cur = P.$('#k-trumna').value;
+    var ts = CEN.trumny.filter(function (t) { return !!t.krem === krem; });
+    P.$('#k-trumna').innerHTML = P.options(ts.map(function (t) { return { v: t.id, l: t.n + ', ' + P.zl(t.p) + (t.stan ? '' : ' (na zamówienie, 2 dni)') }; }), ts.some(function (t) { return t.id === cur; }) ? cur : ts[krem ? 0 : 1].id);
+    P.$('#k-urna-f').style.display = krem ? '' : 'none';
+    P.$('#k-grob-f').style.display = krem ? 'none' : '';
+  }
+  P.$('#k-rodz').innerHTML = P.options(Object.keys(RODZ).map(function (k) { return { v: k, l: RODZ[k] }; }), 'trad');
+  P.$('#k-urna').innerHTML = P.options(CEN.urny.map(function (u) { return { v: u.id, l: u.n + ', ' + P.zl(u.p) + (u.stan ? '' : ' (na zamówienie)') }; }), 'u1');
+  kFill();
+  P.views.kosztorys = function () {
+    var o = kVal(), k = calc(o);
+    P.$('#k-for').textContent = (o.who || 'Bez nazwiska') + ', ' + RODZ[o.rodz].toLowerCase() + (o.relig ? ', ceremonia religijna' : ', ceremonia świecka');
+    var stockNote = [];
+    var t = item(CEN.trumny, o.trumna); if (!t.stan) stockNote.push(t.n + ' na zamówienie, dostawa w 2 dni');
+    if (o.rodz !== 'trad') { var u = item(CEN.urny, o.urna); if (!u.stan) stockNote.push(u.n + ' na zamówienie'); }
+    P.table(P.$('#k-items'), [
+      { key: 0, label: 'Pozycja', sort: false, html: function (x) { return P.esc(x[0]); } },
+      { key: 1, label: 'Kwota', num: 1, sort: false, html: function (x) { return P.zl(x[1]); } }
+    ], { rows: k.items, foot: '<tr class="sum-row"><td>Razem</td><td class="num">' + P.zl(k.total) + '</td></tr>' +
+      (o.zus ? '<tr><td>Zasiłek pogrzebowy z ZUS, rozliczamy za rodzinę</td><td class="num">−' + P.zl(k.zus) + '</td></tr>' : '') +
+      '<tr class="sum-row"><td>Rodzina dopłaca</td><td class="num">' + P.zl(k.fam) + '</td></tr>' });
+    var zp = k.total ? k.zus / k.total * 100 : 0;
+    P.$('#k-split').innerHTML = (o.zus ? '<div class="split" role="img" aria-label="Zasiłek pokrywa ' + P.num(zp) + '% kosztów"><div class="zus" style="width:' + zp + '%"></div><div class="fam" style="width:' + (100 - zp) + '%"></div></div>' +
+      '<div class="legend"><span>Zasiłek ZUS: <b>' + P.zl(k.zus) + '</b> (' + P.num(zp) + '%)</span><span>Rodzina: <b>' + P.zl(k.fam) + '</b></span></div>' : '') +
+      (stockNote.length ? '<p class="note" style="margin-top:12px">' + P.esc(stockNote.join('. ')) + '.</p>' : '') +
+      '<p class="small muted" style="margin-top:12px">Kwoty brutto. Opłaty zarządu cmentarza za miejsce i korzystanie z cmentarza rodzina wnosi osobno.</p>';
+  };
+  P.$$('#k-who, #k-rodz, #k-rel, #k-trumna, #k-urna, #k-grob, #k-dni, #k-km, #k-wien, #k-wiaz, [id^="k-"][type=checkbox]').forEach(function (el) {
+    el.addEventListener(el.tagName === 'SELECT' || el.type === 'checkbox' ? 'change' : 'input', function () {
+      if (el.id === 'k-rodz') kFill();
+      if (el.id === 'k-rel') { P.$('#k-mis').checked = el.value === '0'; P.$('#k-org').checked = el.value === '1'; }
+      P.views.kosztorys();
+    });
+  });
+  P.$('#k-save').addEventListener('click', function () {
+    var o = kVal(), k = calc(o);
+    var c = CASES.filter(function (x) { return x.n.toLowerCase() === o.who.toLowerCase(); })[0];
+    if (c) { c.cost = k.total; c.rodz = o.rodz; c.krem = o.rodz !== 'trad'; c.relig = o.relig; P.toast('Kosztorys zapisany w sprawie: ' + c.n + ', ' + P.zl(k.total)); }
+    else P.toast('Kosztorys zapisany: ' + (o.who || 'bez nazwiska') + ', ' + P.zl(k.total));
+  });
+
+  /* ---------- ROZLICZENIA ---------- */
+  var ZUS_TXT = { brak: ['Do złożenia', 'warn'], zlozony: ['Złożony', 'info'], wyplacony: ['Wypłacony', 'ok'] };
+  P.views.rozliczenia = function () {
+    var past = CASES.filter(function (c) { return c.past; });
+    var last30 = past.filter(function (c) { return P.days(c.cer, TODAY) <= 30; });
+    var wait = past.filter(function (c) { return c.zus === 'zlozony'; });
+    var todo = past.filter(function (c) { return c.zus === 'brak'; });
+    var dop = past.filter(function (c) { return c.dop === 'do'; });
+    var late = dop.filter(function (c) { return P.days(TODAY, c.dopD) < 0; });
+    P.strip(P.$('#ro-strip'), [
+      { label: 'Przychód z 30 dni', value: P.zl(last30.reduce(function (s, c) { return s + c.cost; }, 0)), note: P.n(last30.length, 'pogrzeb', 'pogrzeby', 'pogrzebów') + ' po ceremonii' },
+      { label: 'Zasiłki czekają w ZUS', value: P.zl(wait.reduce(function (s, c) { return s + Math.min(c.cost, ZASILEK); }, 0)), note: P.n(wait.length, 'wniosek', 'wnioski', 'wniosków') },
+      { label: 'Wnioski do złożenia', value: todo.length, note: todo.length ? todo.map(function (c) { return c.n; }).join(', ') : 'wszystkie złożone', tone: todo.length ? 'warn' : 'ok' },
+      { label: 'Dopłaty rodzin do zapłaty', value: P.zl(dop.reduce(function (s, c) { return s + c.fam; }, 0)), note: late.length ? P.n(late.length, 'po terminie', 'po terminie', 'po terminie') : 'w terminie', tone: late.length ? 'bad' : '' }
+    ]);
+    P.table(P.$('#ro-table'), [
+      { key: 'n', label: 'Pogrzeb', html: function (c) { return '<b>' + P.esc(c.n) + '</b><span class="sub">' + P.dy(c.cer) + ', ' + RODZ[c.rodz].toLowerCase() + '</span>'; } },
+      { key: 'cost', label: 'Koszt', num: 1, html: function (c) { return P.zl(c.cost); } },
+      { key: 'zus', label: 'Zasiłek ZUS', val: function (c) { return { brak: 0, zlozony: 1, wyplacony: 2 }[c.zus]; }, html: function (c) {
+        var t = ZUS_TXT[c.zus], wait = c.zus === 'zlozony' ? P.days(c.zusD, TODAY) : 0;
+        return P.chip(t[0], t[1]) + ' ' + P.zl(Math.min(c.cost, ZASILEK)) + '<span class="sub">' + (c.zus === 'brak' ? (c.done.upow ? 'dokumenty gotowe' : 'brak upoważnienia rodziny') : (c.zus === 'zlozony' ? 'złożony ' + P.d(c.zusD) + ', czeka ' + P.n(wait, 'dzień', 'dni', 'dni') : 'wpłynął ' + P.d(c.zusD))) + '</span>'; } },
+      { key: 'fam', label: 'Dopłata rodziny', num: 1, html: function (c) {
+        if (!c.fam) return '<span class="muted">nie ma</span>';
+        var late = c.dop === 'do' && P.days(TODAY, c.dopD) < 0;
+        return P.zl(c.fam) + '<span class="sub">' + (c.dop === 'ok' ? 'zapłacona ' + P.d(c.dopD) : (late ? 'po terminie od ' + P.d(c.dopD) : 'termin ' + P.d(c.dopD))) + '</span>'; } },
+      { key: 'st', label: 'Status', val: function (c) { return (c.zus === 'wyplacony' ? 1 : 0) + (c.dop !== 'do' ? 1 : 0); }, html: function (c) {
+        if (c.zus === 'wyplacony' && c.dop !== 'do') return P.chip('Rozliczony', 'ok');
+        if (c.dop === 'do' && P.days(TODAY, c.dopD) < 0) return P.chip('Dopłata po terminie', 'bad');
+        return P.chip('W trakcie', 'info'); } },
+      { key: 'a', label: '', sort: false, html: function (c) {
+        var b = [];
+        if (c.zus === 'brak') b.push('<button class="btn sm" data-z12="' + c.id + '">Złóż Z-12</button>');
+        if (c.zus === 'zlozony') b.push('<button class="btn sm" data-zus="' + c.id + '">Zasiłek wpłynął</button>');
+        if (c.dop === 'do') b.push('<button class="btn sm" data-dop="' + c.id + '">Dopłata zapłacona</button>');
+        return '<div class="acts">' + b.join('') + '</div>'; } }
+    ], { rows: past, sortKey: 'st' });
+    P.$$('[data-z12]').forEach(function (b) { b.onclick = function () {
+      var c = cs(b.getAttribute('data-z12'));
+      if (!c.done.upow) { P.modal({ title: 'Brakuje upoważnienia', body: '<p class="lead">' + P.esc(c.contact) + ' nie podpisał(a) jeszcze upoważnienia do rozliczenia zasiłku. Bez niego wniosek składa rodzina, a dopłata obejmuje cały koszt pogrzebu.</p>', actions: [
+        { label: 'Zamknij', ghost: true },
+        { label: 'Upoważnienie podpisane, złóż wniosek', primary: true, onClick: function (close) { c.done.upow = c.done.z12 = true; c.zus = 'zlozony'; c.zusD = TODAY; close(); P.toast('Wniosek Z-12 złożony: ' + c.n); P.refresh(); } }] }); return; }
+      c.done.z12 = true; c.zus = 'zlozony'; c.zusD = TODAY; P.toast('Wniosek Z-12 złożony: ' + c.n); P.refresh(); }; });
+    P.$$('[data-zus]').forEach(function (b) { b.onclick = function () { var c = cs(b.getAttribute('data-zus')); c.zus = 'wyplacony'; c.zusD = TODAY; P.toast('Zasiłek z ZUS zaksięgowany: ' + c.n + ', ' + P.zl(Math.min(c.cost, ZASILEK))); P.refresh(); }; });
+    P.$$('[data-dop]').forEach(function (b) { b.onclick = function () { var c = cs(b.getAttribute('data-dop')); c.dop = 'ok'; c.dopD = TODAY; P.toast('Dopłata zaksięgowana: ' + c.n + ', ' + P.zl(c.fam)); P.refresh(); }; });
+    P.bars(P.$('#ro-bars'), HIST.map(function (h) { return { label: h.l, value: h.rev, text: P.n(h.n, 'pogrzeb', 'pogrzeby', 'pogrzebów') + ', ' + P.zl(h.rev) }; }));
+    P.$('#ro-zus').innerHTML = 'Od 1 stycznia 2026 zasiłek pogrzebowy wynosi <b>' + P.zl(ZASILEK) + '</b>. Gdy rodzina nas upoważni, zasiłek trafia do zakładu i pomniejsza rachunek, a rodzina dopłaca tylko różnicę. ' +
+      'Średni koszt pogrzebu w panelu: <b>' + P.zl(past.reduce(function (s, c) { return s + c.cost; }, 0) / past.length) + '</b>. Kwotę zasiłku zmienisz w jednym miejscu w pliku.';
+  };
+
+  P.initTabs();
+})();
+</script>
+</body>
+</html>

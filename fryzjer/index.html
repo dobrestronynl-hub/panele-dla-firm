@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Salon fryzjerski – panel demo</title>
+<meta name="description" content="Panel demo dla salonu fryzjerskiego i barbera: kalendarz stanowisk, klienci i receptury koloru, usługi, zespół i prowizje, kosmetyki. Dane przykładowe.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
+<link rel="stylesheet" href="../assets/panel.css">
+<style>
+  /* Ciemny szyld z paskiem jak słupek barberski */
+  body {
+    --sign-bg: #26202D; --sign-fg: #F6F1EA; --sign-sub: rgba(246, 241, 234, .74);
+    --sign-band: repeating-linear-gradient(-45deg, #C8323C 0 12px, #F6F1EA 12px 24px, #2B4C8C 24px 36px, #F6F1EA 36px 48px); --sign-band-h: 12px;
+    --accent: #9C2A3B; --accent-ink: #FFFFFF; --accent-soft: #F7E6E9; --accent-line: #9C2A3B;
+  }
+
+  /* Kalendarz stanowisk */
+  .day { display: grid; grid-template-columns: 56px repeat(var(--cols), minmax(150px, 1fr)); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-box); overflow: auto; }
+  .day-h { position: sticky; top: 0; z-index: 3; background: var(--surface-2); border-bottom: 1px solid var(--line); border-left: 1px solid var(--line-soft); padding: 9px 10px; font-size: 12.5px; color: var(--ink-3); }
+  .day-h b { display: block; font-size: 14.5px; color: var(--ink); }
+  .day-h:first-child { border-left: 0; }
+  .times, .col { position: relative; height: calc(var(--rows) * 24px); }
+  .times { border-right: 1px solid var(--line-soft); }
+  .times span { position: absolute; left: 8px; font-size: 12px; color: var(--ink-3); transform: translateY(-50%); font-variant-numeric: tabular-nums; }
+  .col { border-left: 1px solid var(--line-soft); background-image: linear-gradient(var(--line-soft) 1px, transparent 1px); background-size: 100% 96px; }
+  .col .off { position: absolute; left: 0; right: 0; background: repeating-linear-gradient(-45deg, #F3F4F3 0 6px, #ECEEEC 6px 12px); }
+  .appt {
+    position: absolute; left: 4px; right: 4px; appearance: none; text-align: left; cursor: pointer; overflow: hidden;
+    border: 1px solid #C9A2AA; border-left: 4px solid var(--accent); border-radius: 5px; background: #FBF2F4; padding: 4px 7px; font-size: 12.5px; line-height: 1.3; color: var(--ink);
+  }
+  .appt b { display: block; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .appt.xs { padding-top: 2px; padding-bottom: 0; }
+  .appt.xs b { font-size: 12.5px; }
+  .appt span { display: block; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .appt.done { background: var(--surface-2); border-color: var(--line); border-left-color: #A9B1B9; color: var(--ink-2); }
+  .appt.now { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .appt.now span { color: rgba(255, 255, 255, .88); }
+  .appt.noshow { background: repeating-linear-gradient(-45deg, #FCE6E3 0 6px, #F9DCD8 6px 12px); border-color: #E7B4AE; border-left-color: var(--bad); }
+  .appt.new { border-left-color: #2B4C8C; }
+  .gap { position: absolute; left: 4px; right: 4px; appearance: none; cursor: pointer; border: 1px dashed #C7CDD2; border-radius: 5px; background: transparent; font-size: 12px; color: var(--ink-3); text-align: left; padding: 3px 7px; }
+  .gap:hover { border-color: var(--accent-line); color: var(--accent-line); background: var(--accent-soft); }
+  .nowline { position: absolute; left: 0; right: 0; height: 0; border-top: 2px solid var(--bad); z-index: 2; pointer-events: none; }
+  .nowline::before { content: attr(data-t); position: absolute; left: 2px; top: -9px; background: var(--bad); color: #fff; font-size: 11px; padding: 0 4px; border-radius: 3px; }
+  .formula { background: var(--surface-2); border: 1px solid var(--line-soft); border-radius: 4px; padding: 8px 10px; font-size: 13.5px; }
+</style>
+</head>
+<body>
+
+<header class="sign">
+  <div class="sign-top">
+    <a href="../index.html">Wszystkie panele</a>
+    <span class="demo-flag">Dane przykładowe</span>
+  </div>
+  <div class="sign-inner">
+    <div>
+      <h1>Twój salon fryzjerski</h1>
+      <p class="sign-sub">Kalendarz stanowisk, klienci z recepturami koloru, zespół i kosmetyki</p>
+    </div>
+    <div class="sign-meta"><strong id="sign-day"></strong><span id="sign-sub"></span></div>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="Moduły panelu">
+  <div class="tabs-inner" role="tablist">
+    <button class="tab" data-tab="kalendarz">Kalendarz</button>
+    <button class="tab" data-tab="klienci">Klienci</button>
+    <button class="tab" data-tab="uslugi">Usługi i cennik</button>
+    <button class="tab" data-tab="zespol">Zespół i prowizje</button>
+    <button class="tab" data-tab="kosmetyki">Kosmetyki</button>
+  </div>
+</nav>
+
+<main>
+  <!-- KALENDARZ -->
+  <section data-panel="kalendarz" class="stack">
+    <div id="kal-strip"></div>
+    <div class="row-between">
+      <div class="row"><div id="kal-day"></div><button class="btn primary" id="kal-add">Dodaj wizytę</button></div>
+      <p class="muted small">Kliknij wizytę, żeby ją rozliczyć, albo przerywane pole, żeby zapisać klienta w wolne okno.</p>
+    </div>
+    <div id="kal-grid"></div>
+  </section>
+
+  <!-- KLIENCI -->
+  <section data-panel="klienci" class="stack">
+    <div id="kl-strip"></div>
+    <div class="box">
+      <div class="box-h">
+        <div class="row"><input id="kl-q" class="inp" type="search" placeholder="Szukaj klienta" aria-label="Szukaj klienta"><div id="kl-filter"></div></div>
+        <button class="btn sm" id="kl-sms">Zaproś wszystkich, których dawno nie było</button>
+      </div>
+      <div class="box-b flush scroll-lg" id="kl-table"></div>
+    </div>
+  </section>
+
+  <!-- USŁUGI -->
+  <section data-panel="uslugi" class="stack">
+    <div id="us-strip"></div>
+    <div class="cols">
+      <div class="box">
+        <div class="box-h"><h2>Cennik i wyniki w tym miesiącu</h2><p>„Za godzinę” pokazuje, ile salon zarabia na godzinie fotela</p></div>
+        <div class="box-b flush" id="us-table"></div>
+      </div>
+      <div class="box">
+        <div class="box-h"><h2>Przychód według usług</h2></div>
+        <div class="box-b"><div id="us-bars"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ZESPÓŁ -->
+  <section data-panel="zespol" class="stack">
+    <div id="ze-strip"></div>
+    <div class="box">
+      <div class="box-h"><h2>Wyniki zespołu w tym miesiącu</h2><p>Prowizja od usług i od sprzedanych kosmetyków</p></div>
+      <div class="box-b flush" id="ze-table"></div>
+    </div>
+    <div class="cols-even">
+      <div class="box">
+        <div class="box-h"><h2>Obłożenie fotela</h2><p>zajęte godziny z godzin pracy</p></div>
+        <div class="box-b"><div id="ze-bars"></div></div>
+      </div>
+      <div class="box">
+        <div class="box-h"><h2>Grafik na ten tydzień</h2></div>
+        <div class="box-b flush" id="ze-grafik"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- KOSMETYKI -->
+  <section data-panel="kosmetyki" class="stack">
+    <div id="ko-strip"></div>
+    <div class="cols">
+      <div class="box">
+        <div class="box-h"><div id="ko-filter"></div><p>Stan, zużycie i ile tygodni wystarczy</p></div>
+        <div class="box-b flush" id="ko-table"></div>
+      </div>
+      <div class="box">
+        <div class="box-h"><h2>Zamówienie do hurtowni</h2><button class="btn sm primary" id="ko-send">Wyślij zamówienie</button></div>
+        <div class="box-b flush" id="ko-order"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <span>Panel demo. Klienci, zespół, ceny i receptury są wymyślone, zmiany znikają po odświeżeniu strony.</span>
+  <a href="../index.html">Zobacz pozostałe panele</a>
+</footer>
+
+<script src="../assets/panel.js"></script>
+<script>
+(function () {
+  'use strict';
+  var r = P.rng(3061);
+  var TODAY = P.today();
+  var NOW = 12 * 60 + 40;             /* stan kalendarza: 12:40 */
+  var OPEN = 9 * 60, CLOSE = 19 * 60, SLOT = 15;
+
+  /* ---------- Dane przykładowe ---------- */
+  var STAFF = [
+    { id: 'ania', n: 'Ania', role: 'stylistka, koloryzacja', prov: 40, from: 9, to: 17 },
+    { id: 'kasia', n: 'Kasia', role: 'stylistka', prov: 40, from: 11, to: 19 },
+    { id: 'marek', n: 'Marek', role: 'barber', prov: 45, from: 10, to: 18 },
+    { id: 'ola', n: 'Ola', role: 'młodsza stylistka', prov: 35, from: 9, to: 17 }
+  ];
+  var ST = {}; STAFF.forEach(function (s) { ST[s.id] = s; });
+  var SERV = [
+    { id: 'sd', n: 'Strzyżenie damskie', price: 90, min: 45, who: ['ania', 'kasia', 'ola'] },
+    { id: 'sm', n: 'Strzyżenie męskie', price: 60, min: 30, who: ['marek', 'ola'] },
+    { id: 'br', n: 'Trymowanie brody', price: 40, min: 20, who: ['marek'] },
+    { id: 'smb', n: 'Strzyżenie i broda', price: 90, min: 45, who: ['marek'] },
+    { id: 'kol', n: 'Koloryzacja', price: 220, min: 120, who: ['ania', 'kasia'] },
+    { id: 'odr', n: 'Farbowanie odrostu', price: 170, min: 90, who: ['ania', 'kasia', 'ola'] },
+    { id: 'bal', n: 'Balayage', price: 450, min: 180, who: ['ania'] },
+    { id: 'mod', n: 'Modelowanie', price: 70, min: 30, who: ['ania', 'kasia', 'ola'] },
+    { id: 'dz', n: 'Strzyżenie dziecięce', price: 45, min: 30, who: ['ola', 'marek'] },
+    { id: 'ker', n: 'Prostowanie keratynowe', price: 380, min: 150, who: ['kasia'] }
+  ];
+  var SV = {}; SERV.forEach(function (s) { SV[s.id] = s; });
+
+  var WOMEN = ['Anna Nowak', 'Katarzyna Lis', 'Magdalena Wójcik', 'Agnieszka Kowalczyk', 'Joanna Zielińska', 'Monika Szymańska', 'Paulina Dąbrowska', 'Karolina Kozłowska', 'Ewelina Jankowska', 'Natalia Mazur',
+    'Aleksandra Krawczyk', 'Justyna Piotrowska', 'Marta Grabowska', 'Beata Pawłowska', 'Dorota Michalska', 'Iwona Nowicka', 'Renata Adamczyk', 'Sylwia Dudek', 'Patrycja Zając', 'Weronika Wieczorek',
+    'Kinga Jabłońska', 'Zuzanna Król', 'Izabela Majewska', 'Edyta Olszewska', 'Halina Jaworska', 'Teresa Malinowska', 'Grażyna Stępień', 'Ilona Górska', 'Emilia Rutkowska', 'Laura Sikora',
+    'Alicja Baran', 'Wiktoria Szczepańska', 'Julia Wróbel', 'Danuta Kaczmarek', 'Elżbieta Sadowska', 'Klaudia Ostrowska', 'Hanna Witkowska', 'Maja Walczak', 'Oliwia Bielecka', 'Lena Kalinowska'];
+  var MEN = ['Piotr Nowak', 'Tomasz Lis', 'Paweł Wójcik', 'Michał Kowalczyk', 'Marcin Zieliński', 'Łukasz Szymański', 'Krzysztof Dąbrowski', 'Jakub Kozłowski', 'Mateusz Jankowski', 'Adrian Mazur',
+    'Kamil Krawczyk', 'Grzegorz Piotrowski', 'Bartosz Grabowski', 'Rafał Pawłowski', 'Dawid Michalski', 'Szymon Nowicki', 'Wojciech Adamczyk', 'Filip Dudek', 'Igor Zając', 'Oskar Wieczorek',
+    'Robert Baran', 'Artur Szczepański', 'Damian Wróbel', 'Patryk Kaczmarek', 'Sebastian Sadowski', 'Hubert Ostrowski', 'Norbert Witkowski', 'Konrad Walczak', 'Daniel Bielecki', 'Antoni Kalinowski'];
+  var FORMULAS = ['farba 7.1 + oksydant 6%, 1:1, 35 min', 'farba 6.0 na odrost + 6.3 na długości, oksydant 6%, 35 min', 'rozjaśniacz + oksydant 9% na pasma, toner 9.1, 20 min',
+    'farba 5.0 + 5.4 (2:1), oksydant 6%, 40 min, wrażliwa skóra głowy', 'farba 8.3 + oksydant 3% na długości, 20 min', 'farba 4.0 kryjąca siwe, oksydant 6%, 45 min'];
+  var SRC = ['rezerwacja online', 'telefon', 'z polecenia', 'Instagram'];
+
+  var CL = [];
+  WOMEN.concat(MEN).forEach(function (n, i) {
+    var man = i >= WOMEN.length, every = man ? P.int(r, 3, 6) : P.int(r, 5, 10);
+    var isNew = i % 13 === 7;           /* kilka osób przychodzi pierwszy raz */
+    var lap = !isNew && r() < 0.16;     /* część dawno nie była */
+    var ago = lap ? every * 7 + P.int(r, 18, 60) : P.int(r, 2, Math.max(4, every * 7 - 3));
+    var fav = man ? P.pick(r, ['sm', 'smb', 'sm', 'br', 'smb']) : P.pick(r, ['sd', 'kol', 'odr', 'sd', 'odr', 'mod', 'bal', 'ker', 'sd']);
+    var stylist = P.pick(r, SV[fav].who);
+    var visits = isNew ? 0 : P.int(r, 2, 24);
+    var last = isNew ? null : P.addDays(TODAY, -ago);
+    var c = { id: 'k' + i, n: n, man: man, every: every, last: last, fav: fav, stylist: stylist, visits: visits, src: isNew ? P.pick(r, ['rezerwacja online', 'Instagram', 'z polecenia']) : P.pick(r, SRC),
+      noshow: !isNew && r() < 0.12 ? P.int(r, 1, 2) : 0, formula: !isNew && (fav === 'kol' || fav === 'odr' || fav === 'bal') ? P.pick(r, FORMULAS) : null };
+    c.since = isNew ? TODAY : P.addDays(last, -(visits - 1) * every * 7 - P.int(r, 0, 20));
+    c.year = Math.round(Math.min(visits, 52 / every) * SV[fav].price * (0.9 + r() * 0.35));
+    c.hist = [];
+    for (var h = 0; h < Math.min(5, visits); h++) c.hist.push({ d: P.addDays(last, -h * every * 7 - P.int(r, 0, 5)), s: h % 3 === 2 && !man ? 'mod' : fav, who: stylist });
+    CL.push(c);
+  });
+  function cl(id) { return CL.filter(function (c) { return c.id === id; })[0]; }
+
+  /* wizyty: dziś i jutro */
+  var AP = [], apN = 0;
+  function fill(dayOff) {
+    var used = {};
+    STAFF.forEach(function (s) {
+      var t = s.from * 60 + (r() < 0.5 ? 0 : 15);
+      while (t < s.to * 60 - 20) {
+        if (r() < (dayOff ? 0.3 : 0.18)) { t += P.pick(r, [15, 30, 45]); continue; }
+        /* każdy klient raz dziennie, zwykle na swoją usługę i do swojej osoby */
+        var pool = CL.filter(function (c) { return !used[c.id] && SV[c.fav].who.indexOf(s.id) >= 0 && t + SV[c.fav].min <= s.to * 60 && (c.stylist === s.id || r() < 0.25); });
+        var fresh = pool.filter(function (c) { return !c.visits && t > NOW + 30; });
+        if (!pool.length) { t += 15; continue; }
+        var c = fresh.length && r() < 0.5 ? fresh[0] : P.pick(r, pool), v = SV[c.fav];
+        if (!c.man && v.id === 'sd' && r() < 0.15) v = SV.mod;
+        used[c.id] = 1;
+        var a = { id: 'a' + (apN++), day: dayOff, staff: s.id, cl: c.id, sv: v.id, start: t, min: v.min, price: v.price, st: 'booked', src: c.visits ? P.pick(r, SRC) : c.src, isNew: !c.visits };
+        if (!dayOff) {
+          if (t + v.min <= NOW) a.st = 'done';
+          else if (t <= NOW) a.st = 'now';
+        }
+        AP.push(a);
+        t += v.min + (r() < 0.3 ? 15 : 0);
+      }
+    });
+  }
+  fill(0); fill(1);
+  /* jedna wizyta rano, na którą klient nie przyszedł */
+  var early = AP.filter(function (a) { return a.day === 0 && a.st === 'done' && a.min >= 45; })[0];
+  if (early) { early.st = 'noshow'; cl(early.cl).noshow++; }
+  /* wyniki miesiąca (przykładowe): każda osoba ma inne obłożenie */
+  var MONTH = {}, SVM = {}, OCC = { ania: 0.84, kasia: 0.78, marek: 0.88, ola: 0.58 };
+  SERV.forEach(function (v) { SVM[v.id] = { n: 0, rev: 0 }; });
+  STAFF.forEach(function (s) {
+    var m = MONTH[s.id] = { visits: 0, rev: 0, retail: Math.round(300 + r() * 900), hours: 0, avail: (s.to - s.from) * 21 };
+    var mine = SERV.filter(function (v) { return v.who.indexOf(s.id) >= 0; });
+    while (m.hours < m.avail * OCC[s.id]) {
+      var v = P.pick(r, mine);
+      if ((v.id === 'bal' || v.id === 'ker') && r() < 0.6) continue;
+      if (v.id === 'dz' && r() < 0.5) continue;
+      m.visits++; m.rev += v.price; m.hours += v.min / 60; SVM[v.id].n++; SVM[v.id].rev += v.price;
+    }
+  });
+
+  var PROD = [
+    { n: 'Farba 4.0 (ciemny brąz)', g: 'Farby', unit: 'tub.', stan: 6, min: 4, week: 1.5, cena: 28 },
+    { n: 'Farba 6.0 (ciemny blond)', g: 'Farby', unit: 'tub.', stan: 3, min: 5, week: 2.5, cena: 28 },
+    { n: 'Farba 7.1 (popielaty blond)', g: 'Farby', unit: 'tub.', stan: 9, min: 5, week: 2, cena: 28 },
+    { n: 'Farba 8.3 (złocisty blond)', g: 'Farby', unit: 'tub.', stan: 2, min: 3, week: 1, cena: 28 },
+    { n: 'Toner 9.1', g: 'Farby', unit: 'tub.', stan: 5, min: 3, week: 1, cena: 32 },
+    { n: 'Oksydant 3% 1 l', g: 'Oksydanty i rozjaśniacze', unit: 'but.', stan: 3, min: 2, week: 0.5, cena: 24 },
+    { n: 'Oksydant 6% 1 l', g: 'Oksydanty i rozjaśniacze', unit: 'but.', stan: 2, min: 3, week: 1.2, cena: 24 },
+    { n: 'Oksydant 9% 1 l', g: 'Oksydanty i rozjaśniacze', unit: 'but.', stan: 2, min: 2, week: 0.4, cena: 24 },
+    { n: 'Rozjaśniacz w proszku 500 g', g: 'Oksydanty i rozjaśniacze', unit: 'op.', stan: 1, min: 2, week: 0.6, cena: 69 },
+    { n: 'Szampon profesjonalny 1 l', g: 'Do pracy', unit: 'but.', stan: 4, min: 2, week: 0.8, cena: 45 },
+    { n: 'Odżywka profesjonalna 1 l', g: 'Do pracy', unit: 'but.', stan: 3, min: 2, week: 0.6, cena: 52 },
+    { n: 'Rękawiczki nitrylowe (100 szt.)', g: 'Do pracy', unit: 'op.', stan: 2, min: 2, week: 0.7, cena: 29 },
+    { n: 'Szampon do sprzedaży 250 ml', g: 'Do sprzedaży', unit: 'szt.', stan: 14, min: 6, week: 2, cena: 38, sell: 69 },
+    { n: 'Olejek do włosów 100 ml', g: 'Do sprzedaży', unit: 'szt.', stan: 4, min: 5, week: 1.5, cena: 49, sell: 89 },
+    { n: 'Pasta do stylizacji (barber)', g: 'Do sprzedaży', unit: 'szt.', stan: 7, min: 4, week: 1.2, cena: 34, sell: 65 },
+    { n: 'Olejek do brody 30 ml', g: 'Do sprzedaży', unit: 'szt.', stan: 3, min: 4, week: 1, cena: 29, sell: 55 }
+  ];
+  PROD.forEach(function (p, i) { p.id = 'p' + i; p.order = p.stan < p.min ? Math.ceil(p.min * 2 - p.stan) : 0; });
+
+  var dayOff = 0;
+  P.$('#sign-day').textContent = P.dayTitle(TODAY);
+  P.$('#sign-sub').textContent = STAFF.length + ' osoby w zespole, otwarte ' + P.hm(OPEN) + '–' + P.hm(CLOSE);
+
+  function dayAp(d) { return AP.filter(function (a) { return a.day === d && a.st !== 'cancel'; }); }
+  function gaps(sid, d) {
+    var s = ST[sid], list = dayAp(d).filter(function (a) { return a.staff === sid; }).sort(function (a, b) { return a.start - b.start; });
+    var out = [], t = s.from * 60;
+    list.forEach(function (a) { if (a.start - t >= 30) out.push([t, a.start]); t = Math.max(t, a.start + a.min); });
+    if (s.to * 60 - t >= 30) out.push([t, s.to * 60]);
+    return out.filter(function (g) { return d > 0 || g[1] > NOW; }).map(function (g) { return [d > 0 ? g[0] : Math.max(g[0], Math.ceil(NOW / 15) * 15), g[1]]; }).filter(function (g) { return g[1] - g[0] >= 30; });
+  }
+
+  /* ---------- KALENDARZ ---------- */
+  P.views.kalendarz = function () {
+    var list = dayAp(dayOff);
+    var rev = list.filter(function (a) { return a.st !== 'noshow'; }).reduce(function (s, a) { return s + a.price; }, 0);
+    var busy = list.filter(function (a) { return a.st !== 'noshow'; }).reduce(function (s, a) { return s + a.min; }, 0);
+    var avail = STAFF.reduce(function (s, x) { return s + (x.to - x.from) * 60; }, 0);
+    var gapsN = 0; STAFF.forEach(function (s) { gapsN += gaps(s.id, dayOff).length; });
+    var nsToday = AP.filter(function (a) { return a.day === 0 && a.st === 'noshow'; });
+    var nsMonth = 4 + nsToday.length, nsLoss = 330 + nsToday.reduce(function (s, a) { return s + a.price; }, 0);
+    P.strip(P.$('#kal-strip'), [
+      { label: dayOff ? 'Wizyty jutro' : 'Wizyty dziś', value: list.length, note: list.filter(function (a) { return a.isNew; }).length + ' nowych klientów' },
+      { label: 'Przychód z wizyt', value: P.zl(rev), note: dayOff ? 'zaplanowany' : P.zl(list.filter(function (a) { return a.st === 'done'; }).reduce(function (s, a) { return s + a.price; }, 0)) + ' już rozliczone' },
+      { label: 'Obłożenie foteli', value: P.num(busy / avail * 100) + '%', note: P.num(busy / 60, 1) + ' z ' + P.num(avail / 60) + ' godzin pracy', tone: busy / avail > 0.75 ? 'ok' : '' },
+      { label: 'Wolne okna od 30 min', value: gapsN, note: 'do zapełnienia z listy klientów', tone: gapsN ? 'warn' : 'ok' },
+      { label: 'Nie przyszli bez odwołania', value: nsMonth, note: 'w tym miesiącu, ' + P.zl(nsLoss) + ' straconego czasu', tone: nsMonth ? 'bad' : 'ok' }
+    ]);
+    P.seg(P.$('#kal-day'), [{ v: 0, l: 'Dziś' }, { v: 1, l: 'Jutro' }], dayOff, function (v) { dayOff = +v; P.views.kalendarz(); });
+    var rows = (CLOSE - OPEN) / SLOT, px = 24 / SLOT;
+    var h = '<div class="day" style="--cols:' + STAFF.length + ';--rows:' + rows + '"><div class="day-h">&nbsp;</div>';
+    STAFF.forEach(function (s) { h += '<div class="day-h"><b>' + s.n + '</b>' + s.role + ', ' + s.from + ':00–' + s.to + ':00</div>'; });
+    h += '<div class="times">';
+    for (var t = OPEN + 60; t < CLOSE; t += 60) h += '<span style="top:' + (t - OPEN) * px + 'px">' + P.hm(t) + '</span>';
+    h += '</div>';
+    STAFF.forEach(function (s) {
+      h += '<div class="col">';
+      if (s.from * 60 > OPEN) h += '<div class="off" style="top:0;height:' + (s.from * 60 - OPEN) * px + 'px"></div>';
+      if (s.to * 60 < CLOSE) h += '<div class="off" style="top:' + (s.to * 60 - OPEN) * px + 'px;bottom:0"></div>';
+      gaps(s.id, dayOff).forEach(function (g) {
+        h += '<button class="gap" data-s="' + s.id + '" data-t="' + g[0] + '" style="top:' + ((g[0] - OPEN) * px + 2) + 'px;height:' + ((g[1] - g[0]) * px - 4) + 'px">wolne ' + P.hm(g[0]) + '–' + P.hm(g[1]) + '</button>';
+      });
+      dayAp(dayOff).filter(function (a) { return a.staff === s.id; }).forEach(function (a) {
+        var c = cl(a.cl), v = SV[a.sv];
+        var label = a.st === 'done' ? 'rozliczona' : a.st === 'noshow' ? (c.man ? 'nie przyszedł' : 'nie przyszła') : a.st === 'now' ? 'teraz w fotelu' : (a.isNew ? 'nowy klient, ' : '') + P.zl(a.price);
+        /* krótkie wizyty mieszczą mniej linii */
+        var inner = a.min >= 45 ? '<span>' + P.esc(v.n) + '</span><span>' + label + '</span>' : a.min >= 30 ? '<span>' + P.esc(v.n) + ', ' + label + '</span>' : '';
+        h += '<button class="appt ' + a.st + (a.isNew && a.st === 'booked' ? ' new' : '') + (a.min < 30 ? ' xs' : '') + '" data-id="' + a.id + '" title="' + P.esc(c.n + ', ' + v.n + ', ' + label) + '" style="top:' + ((a.start - OPEN) * px + 1) + 'px;height:' + (a.min * px - 2) + 'px">' +
+          '<b>' + P.hm(a.start) + ' ' + P.esc(c.n) + (a.min < 30 ? ', ' + P.esc(v.n.toLowerCase()) : '') + '</b>' + inner + '</button>';
+      });
+      if (!dayOff && NOW > OPEN && NOW < CLOSE) h += '<div class="nowline" style="top:' + (NOW - OPEN) * px + 'px"' + (s === STAFF[0] ? ' data-t="' + P.hm(NOW) + '"' : '') + '></div>';
+      h += '</div>';
+    });
+    h += '</div>';
+    P.$('#kal-grid').innerHTML = h;
+    P.$$('#kal-grid .appt').forEach(function (b) { b.onclick = function () { openAppt(b.getAttribute('data-id')); }; });
+    P.$$('#kal-grid .gap').forEach(function (b) { b.onclick = function () { addVisit(b.getAttribute('data-s'), +b.getAttribute('data-t')); }; });
+  };
+  function openAppt(id) {
+    var a = AP.filter(function (x) { return x.id === id; })[0], c = cl(a.cl), v = SV[a.sv];
+    var st = { done: P.chip('Rozliczona', 'ok'), noshow: P.chip('Klient nie przyszedł', 'bad'), now: P.chip('Teraz w fotelu', 'acc'), booked: P.chip('Zarezerwowana', 'info') }[a.st];
+    var body = '<dl class="kv"><dt>Status</dt><dd>' + st + '</dd><dt>Usługa</dt><dd>' + P.esc(v.n) + ', ' + v.min + ' min</dd>' +
+      '<dt>Kiedy</dt><dd>' + (a.day ? 'jutro' : 'dziś') + ', ' + P.hm(a.start) + '–' + P.hm(a.start + a.min) + ' u: ' + ST[a.staff].n + '</dd><dt>Cena</dt><dd>' + P.zl(a.price) + '</dd>' +
+      '<dt>Rezerwacja</dt><dd>' + P.esc(a.src) + (a.isNew ? ', ' + P.chip('nowy klient', 'info') : ', ' + c.visits + ' ' + P.plural(c.visits, 'wizyta', 'wizyty', 'wizyt') + ' wcześniej') + '</dd>' +
+      (c.noshow ? '<dt>Uwaga</dt><dd>' + P.chip('Nieobecność bez odwołania: ' + c.noshow + ' raz' + (c.noshow > 1 ? 'y' : ''), 'warn') + '</dd>' : '') + '</dl>' +
+      (c.formula ? '<h3 style="font-size:14.5px;margin:14px 0 6px">Receptura koloru z ostatniej wizyty</h3><div class="formula">' + P.esc(c.formula) + '</div>' : '');
+    var acts = [];
+    if (a.st === 'booked' || a.st === 'now') {
+      acts.push({ label: 'Odwołaj wizytę', onClick: function (close) { a.st = 'cancel'; close(); P.toast('Wizyta odwołana, okno ' + P.hm(a.start) + ' jest wolne'); P.views.kalendarz(); } });
+      if (!a.day) acts.push({ label: c.man ? 'Nie przyszedł' : 'Nie przyszła', onClick: function (close) { a.st = 'noshow'; c.noshow++; close(); P.toast('Zapisano: ' + c.n + (c.man ? ' nie przyszedł' : ' nie przyszła')); P.views.kalendarz(); } });
+    }
+    if (a.st !== 'done' && a.st !== 'noshow' && !a.day) acts.push({ label: 'Rozlicz wizytę', primary: true, onClick: function (close) { close(); settle(a); } });
+    acts.push({ label: 'Zamknij', ghost: true });
+    P.modal({ title: c.n, sub: P.esc(v.n) + ', ' + P.hm(a.start), body: body, actions: acts });
+  }
+  function settle(a) {
+    var c = cl(a.cl), v = SV[a.sv];
+    var body = '<div class="form-grid"><label class="field"><span>Kwota</span><input id="s-k" type="number" min="0" step="1" value="' + a.price + '"></label>' +
+      '<label class="field"><span>Płatność</span><select id="s-p"><option>Karta</option><option>Gotówka</option><option>BLIK</option><option>Bon podarunkowy</option></select></label>' +
+      (c.formula || v.id === 'kol' || v.id === 'odr' || v.id === 'bal' ? '<label class="field full"><span>Receptura koloru na następny raz</span><input id="s-f" value="' + P.esc(c.formula || '') + '" placeholder="Np. farba 7.1 + oksydant 6%, 1:1, 35 min"></label>' : '') +
+      '<p class="full small" id="s-err" style="color:var(--bad)"></p></div>';
+    P.modal({ title: 'Rozlicz: ' + c.n, sub: P.esc(v.n), body: body, actions: [
+      { label: 'Anuluj', ghost: true },
+      { label: 'Rozlicz wizytę', primary: true, onClick: function (close, d) {
+        var k = +P.$('#s-k', d).value; if (!(k >= 0)) { P.$('#s-err', d).textContent = 'Wpisz kwotę.'; return; }
+        a.price = k; a.st = 'done'; c.last = TODAY; c.visits++; var f = P.$('#s-f', d); if (f && f.value.trim()) c.formula = f.value.trim();
+        close(); P.toast('Rozliczono: ' + c.n + ', ' + P.zl(k) + ' (' + P.$('#s-p', d).value.toLowerCase() + ')'); P.views.kalendarz();
+      } }
+    ] });
+  }
+  function addVisit(sid, t) {
+    /* z wolnego okna: podpowiedz usługę, która się w nim zmieści */
+    var g = gaps(sid, dayOff).filter(function (x) { return x[0] === t; })[0], len = g ? g[1] - g[0] : 999;
+    var pref = (sid === 'marek' ? ['smb', 'sm', 'br'] : ['sd', 'mod', 'sm']).filter(function (id) { return SV[id].who.indexOf(sid) >= 0 && SV[id].min <= len; })[0] || 'sd';
+    var clOpts = CL.slice().sort(function (a, b) { return a.n.localeCompare(b.n, 'pl'); }).map(function (c) { return { v: c.id, l: c.n }; });
+    var body = '<div class="form-grid">' +
+      '<label class="field full"><span>Klient</span><select id="v-c">' + P.options([{ v: '', l: 'Nowy klient (wpisz poniżej)' }].concat(clOpts), '') + '</select></label>' +
+      '<label class="field full"><span>Nowy klient: imię i nazwisko</span><input id="v-n" placeholder="Np. Anna Kowalska"></label>' +
+      '<label class="field"><span>Usługa</span><select id="v-s">' + P.options(SERV.map(function (v) { return { v: v.id, l: v.n + ' (' + v.min + ' min, ' + v.price + ' zł)' }; }), pref) + '</select></label>' +
+      '<label class="field"><span>Kto</span><select id="v-w"></select></label>' +
+      '<label class="field"><span>Dzień</span><select id="v-d">' + P.options([{ v: 0, l: 'Dziś' }, { v: 1, l: 'Jutro' }], dayOff) + '</select></label>' +
+      '<label class="field"><span>Godzina</span><select id="v-t"></select></label>' +
+      '<p class="full small" id="v-err" style="color:var(--bad)"></p></div>';
+    P.modal({ title: 'Nowa wizyta', body: body, onOpen: function (d) {
+      function refresh() {
+        var v = SV[P.$('#v-s', d).value], w = P.$('#v-w', d), cur = w.value || sid;
+        w.innerHTML = P.options(v.who.map(function (x) { return { v: x, l: ST[x].n }; }), v.who.indexOf(cur) >= 0 ? cur : v.who[0]);
+        var dd = +P.$('#v-d', d).value, times = [];
+        gaps(w.value, dd).forEach(function (g) { for (var t0 = g[0]; t0 + v.min <= g[1]; t0 += 15) times.push(t0); });
+        var ts = P.$('#v-t', d);
+        ts.innerHTML = times.length ? P.options(times.map(function (x) { return { v: x, l: P.hm(x) }; }), times.indexOf(t) >= 0 ? t : times[0]) : '<option value="">brak wolnego okna</option>';
+      }
+      ['#v-s', '#v-w', '#v-d'].forEach(function (q) { P.$(q, d).addEventListener('change', refresh); });
+      refresh();
+    }, actions: [
+      { label: 'Anuluj', ghost: true },
+      { label: 'Zapisz wizytę', primary: true, onClick: function (close, d) {
+        var cid = P.$('#v-c', d).value, nn = P.$('#v-n', d).value.trim(), tv = P.$('#v-t', d).value;
+        if (!cid && !nn) { P.$('#v-err', d).textContent = 'Wybierz klienta z listy albo wpisz nowego.'; return; }
+        if (!tv) { P.$('#v-err', d).textContent = 'Ta osoba nie ma wolnego okna na tę usługę. Wybierz inną osobę albo dzień.'; return; }
+        if (!cid) { cid = 'k' + CL.length; CL.push({ id: cid, n: nn, man: false, every: 6, last: TODAY, fav: P.$('#v-s', d).value, stylist: P.$('#v-w', d).value, visits: 0, src: 'telefon', noshow: 0, formula: null, since: TODAY, year: 0, hist: [] }); }
+        var v = SV[P.$('#v-s', d).value];
+        AP.push({ id: 'a' + (apN++), day: +P.$('#v-d', d).value, staff: P.$('#v-w', d).value, cl: cid, sv: v.id, start: +tv, min: v.min, price: v.price, st: 'booked', src: 'telefon', isNew: !cl(cid).visits });
+        close(); P.toast('Zapisano: ' + cl(cid).n + ', ' + (+P.$('#v-d', d).value ? 'jutro' : 'dziś') + ' ' + P.hm(+tv) + ' u: ' + ST[P.$('#v-w', d).value].n); P.views.kalendarz();
+      } }
+    ] });
+  }
+  P.$('#kal-add').addEventListener('click', function () { addVisit('ania', 0); });
+
+  /* ---------- KLIENCI ---------- */
+  var klF = 'all', klQ = '';
+  function weeksAgo(c) { return Math.floor(P.days(c.last, TODAY) / 7); }
+  function lapsed(c) { return c.visits >= 2 && weeksAgo(c) > c.every + 2; }
+  P.views.klienci = function () {
+    var active = CL.filter(function (c) { return c.last && P.days(c.last, TODAY) <= 90; }).length;
+    var nowi = CL.filter(function (c) { return P.days(c.since, TODAY) <= 30; }).length;
+    var lap = CL.filter(lapsed);
+    var mRev = 0, mN = 0; STAFF.forEach(function (s) { mRev += MONTH[s.id].rev; mN += MONTH[s.id].visits; });
+    P.strip(P.$('#kl-strip'), [
+      { label: 'Aktywni klienci', value: active, note: 'wizyta w ostatnich 90 dniach' },
+      { label: 'Nowi w tym miesiącu', value: nowi, note: 'pierwsza wizyta w salonie' },
+      { label: 'Dawno nie było', value: lap.length, note: 'dłużej niż zwykle, warto zaprosić', tone: lap.length ? 'warn' : 'ok' },
+      { label: 'Średni rachunek', value: P.zl(mRev / mN), note: 'za usługę, w tym miesiącu' }
+    ]);
+    P.seg(P.$('#kl-filter'), [{ v: 'all', l: 'Wszyscy' }, { v: 'lap', l: 'Dawno nie było' }, { v: 'kol', l: 'Koloryzacja' }, { v: 'ns', l: 'Nie przychodzą' }], klF, function (v) { klF = v; P.views.klienci(); });
+    var q = P.$('#kl-q'); q.value = klQ; q.oninput = function () { klQ = q.value; P.views.klienci(); q.focus(); };
+    var rows = CL.filter(function (c) {
+      if (klQ && c.n.toLowerCase().indexOf(klQ.toLowerCase()) < 0) return false;
+      if (klF === 'lap') return lapsed(c);
+      if (klF === 'kol') return !!c.formula;
+      if (klF === 'ns') return c.noshow > 0;
+      return true;
+    });
+    P.table(P.$('#kl-table'), [
+      { key: 'n', label: 'Klient', html: function (c) { return '<b>' + P.esc(c.n) + '</b><span class="sub">' + P.esc(c.src) + ', z nami od ' + P.d(c.since) + '.' + String(c.since.getFullYear()).slice(2) + '</span>'; } },
+      { key: 'visits', label: 'Wizyty', num: 1 },
+      { key: 'last', label: 'Ostatnia wizyta', val: function (c) { return c.last ? +c.last : +TODAY + 1; }, html: function (c) {
+        if (!c.last) { var nx = AP.filter(function (a) { return a.cl === c.id && a.st === 'booked'; })[0]; return '<span class="muted">jeszcze nie był' + (c.man ? '' : 'a') + '</span><span class="sub">' + (nx ? 'pierwsza wizyta ' + (nx.day ? 'jutro' : 'dziś') + ' ' + P.hm(nx.start) : 'pierwsza wizyta umówiona') + '</span>'; }
+        var w = weeksAgo(c); return P.d(c.last) + '<span class="sub">' + (w ? w + ' tyg. temu' : 'w tym tygodniu') + ', zwykle co ' + c.every + ' tyg.</span>'; } },
+      { key: 'fav', label: 'Zwykle', val: function (c) { return SV[c.fav].n; }, html: function (c) { return P.esc(SV[c.fav].n) + '<span class="sub">u: ' + ST[c.stylist].n + '</span>'; } },
+      { key: 'year', label: 'Wydał w roku', num: 1, html: function (c) { return P.zl(c.year); } },
+      { key: 'st', label: 'Status', val: function (c) { return lapsed(c) ? 0 : (c.noshow ? 1 : (!c.visits ? 2 : 3)); }, html: function (c) {
+        var h = lapsed(c) ? P.chip('Dawno nie było', 'warn') : (!c.visits ? P.chip('Nowy klient', 'info') : P.chip('Wraca regularnie', 'ok'));
+        if (c.noshow) h += ' ' + P.chip((c.man ? 'nie przyszedł ' : 'nie przyszła ') + c.noshow + 'x', 'bad');
+        if (c.formula) h += ' ' + P.chip('receptura', 'info');
+        return h; } },
+      { key: 'a', label: '', sort: false, html: function (c) { return lapsed(c) ? '<button class="btn sm" data-sms="' + c.id + '">Zaproś SMS-em</button>' : ''; } }
+    ], { rows: rows, sortKey: 'st', onRow: openClient, empty: 'Brak klientów w tym widoku.' });
+    P.$$('[data-sms]').forEach(function (b) { b.onclick = function () { var c = cl(b.getAttribute('data-sms')); P.toast('SMS z zaproszeniem wysłany: ' + c.n); }; });
+  };
+  function openClient(c) {
+    var body = '<dl class="kv"><dt>Wizyty</dt><dd>' + (c.visits ? c.visits + ', zwykle co ' + c.every + ' tyg.' : 'pierwsza wizyta umówiona') + '</dd><dt>' + (c.visits ? 'Zwykle' : 'Umówiony na') + '</dt><dd>' + P.esc(SV[c.fav].n) + ' u: ' + ST[c.stylist].n + '</dd>' +
+      '<dt>Wydał w roku</dt><dd>' + P.zl(c.year) + '</dd><dt>Skąd</dt><dd>' + P.esc(c.src) + '</dd>' +
+      (c.noshow ? '<dt>Nieobecności</dt><dd>' + c.noshow + ' raz' + (c.noshow > 1 ? 'y' : '') + ' (rozważ zaliczkę przy rezerwacji)</dd>' : '') + '</dl>' +
+      (c.formula ? '<h3 style="font-size:14.5px;margin:14px 0 6px">Receptura koloru</h3><div class="formula">' + P.esc(c.formula) + '</div>' : '') +
+      (c.hist.length ? '<h3 style="font-size:14.5px;margin:14px 0 6px">Ostatnie wizyty</h3><div class="tbl-wrap"><table class="tbl"><tbody>' +
+        c.hist.map(function (h) { return '<tr><td>' + P.dy(h.d) + '</td><td>' + P.esc(SV[h.s].n) + '</td><td>' + ST[h.who].n + '</td><td class="num">' + P.zl(SV[h.s].price) + '</td></tr>'; }).join('') + '</tbody></table></div>' : '');
+    P.modal({ title: c.n, sub: 'Karta klienta', body: body, actions: [
+      { label: 'Zaproś SMS-em', onClick: function (close) { close(); P.toast('SMS z zaproszeniem wysłany: ' + c.n); } },
+      { label: 'Zapisz na wizytę', primary: true, onClick: function (close) { close(); location.hash = 'kalendarz'; addVisit(c.stylist, 0); setTimeout(function () { var s = document.querySelector('#v-c'); if (s) { s.value = c.id; } var sv = document.querySelector('#v-s'); if (sv) { sv.value = c.fav; sv.dispatchEvent(new Event('change')); } }, 0); } }
+    ] });
+  }
+  P.$('#kl-sms').addEventListener('click', function () { var n = CL.filter(lapsed).length; P.toast(n ? 'Zaproszenia SMS wysłane do: ' + P.n(n, 'klient', 'klientów', 'klientów') : 'Nie ma kogo zapraszać'); });
+
+  /* ---------- USŁUGI ---------- */
+  P.views.uslugi = function () {
+    var rev = 0, n = 0; SERV.forEach(function (v) { rev += SVM[v.id].rev; n += SVM[v.id].n; });
+    var best = SERV.slice().sort(function (a, b) { return b.price / b.min - a.price / a.min; })[0];
+    P.strip(P.$('#us-strip'), [
+      { label: 'Przychód z usług w miesiącu', value: P.zl(rev), note: P.n(n, 'wizyta', 'wizyty', 'wizyt') },
+      { label: 'Średnia cena usługi', value: P.zl(rev / n), note: 'wszystkie usługi' },
+      { label: 'Najlepiej płatna godzina', value: P.zl(best.price / best.min * 60) + '/h', note: best.n, tone: 'ok' },
+      { label: 'Usług w cenniku', value: SERV.length, note: 'czas i cena do zmiany w pliku' }
+    ]);
+    P.table(P.$('#us-table'), [
+      { key: 'n', label: 'Usługa', html: function (v) { return '<b>' + P.esc(v.n) + '</b><span class="sub">' + v.who.map(function (x) { return ST[x].n; }).join(', ') + '</span>'; } },
+      { key: 'price', label: 'Cena', num: 1, html: function (v) { return P.zl(v.price); } },
+      { key: 'min', label: 'Czas', num: 1, html: function (v) { return v.min + ' min'; } },
+      { key: 'h', label: 'Za godzinę', num: 1, val: function (v) { return v.price / v.min; }, html: function (v) { return '<b>' + P.zl(v.price / v.min * 60) + '</b>'; } },
+      { key: 'cnt', label: 'W miesiącu', num: 1, val: function (v) { return SVM[v.id].n; }, html: function (v) { return SVM[v.id].n; } },
+      { key: 'rev', label: 'Przychód', num: 1, val: function (v) { return SVM[v.id].rev; }, html: function (v) { return P.zl(SVM[v.id].rev); } }
+    ], { rows: SERV, sortKey: 'rev', sortDir: -1 });
+    P.bars(P.$('#us-bars'), SERV.slice().sort(function (a, b) { return SVM[b.id].rev - SVM[a.id].rev; }).map(function (v) { return { label: v.n, value: SVM[v.id].rev, text: P.zl(SVM[v.id].rev) }; }));
+  };
+
+  /* ---------- ZESPÓŁ ---------- */
+  P.views.zespol = function () {
+    var tot = 0, prov = 0, hrs = 0, av = 0;
+    STAFF.forEach(function (s) { var m = MONTH[s.id]; tot += m.rev + m.retail; prov += m.rev * s.prov / 100 + m.retail * 0.1; hrs += m.hours; av += m.avail; });
+    P.strip(P.$('#ze-strip'), [
+      { label: 'Przychód zespołu w miesiącu', value: P.zl(tot), note: 'usługi i kosmetyki' },
+      { label: 'Prowizje do wypłaty', value: P.zl(prov), note: 'usługi wg stawki, kosmetyki 10%' },
+      { label: 'Obłożenie salonu', value: P.num(hrs / av * 100) + '%', note: P.num(hrs) + ' z ' + P.num(av) + ' godzin' },
+      { label: 'Wizyty w miesiącu', value: STAFF.reduce(function (s, x) { return s + MONTH[x.id].visits; }, 0), note: 'wszystkie osoby' }
+    ]);
+    P.table(P.$('#ze-table'), [
+      { key: 'n', label: 'Osoba', html: function (s) { return '<b>' + s.n + '</b><span class="sub">' + s.role + '</span>'; } },
+      { key: 'v', label: 'Wizyty', num: 1, val: function (s) { return MONTH[s.id].visits; }, html: function (s) { return MONTH[s.id].visits; } },
+      { key: 'rev', label: 'Usługi', num: 1, val: function (s) { return MONTH[s.id].rev; }, html: function (s) { return P.zl(MONTH[s.id].rev); } },
+      { key: 'ret', label: 'Kosmetyki', num: 1, val: function (s) { return MONTH[s.id].retail; }, html: function (s) { return P.zl(MONTH[s.id].retail); } },
+      { key: 'avg', label: 'Średnio za wizytę', num: 1, val: function (s) { return MONTH[s.id].rev / MONTH[s.id].visits; }, html: function (s) { return P.zl(MONTH[s.id].rev / MONTH[s.id].visits); } },
+      { key: 'prov', label: 'Prowizja', num: 1, val: function (s) { return MONTH[s.id].rev * s.prov / 100; }, html: function (s) { var m = MONTH[s.id]; return '<b>' + P.zl(m.rev * s.prov / 100 + m.retail * 0.1) + '</b><span class="sub">' + s.prov + '% usług + 10% kosmetyków</span>'; } }
+    ], { rows: STAFF, sortKey: 'rev', sortDir: -1 });
+    P.bars(P.$('#ze-bars'), STAFF.map(function (s) { var p = MONTH[s.id].hours / MONTH[s.id].avail * 100; return { label: s.n, value: p, text: P.num(p) + '%', tone: p > 80 ? 'ok' : (p < 55 ? 'warn' : '') }; }), { max: 100 });
+    var mon = P.monday(TODAY), days = [0, 1, 2, 3, 4, 5];
+    var grafik = STAFF.map(function (s, i) { var o = { s: s }; days.forEach(function (d) { o['d' + d] = (d + i) % 6 === 5 ? null : (d === 5 ? '9–15' : s.from + '–' + s.to); }); return o; });
+    P.table(P.$('#ze-grafik'), [{ key: 'n', label: '', sort: false, html: function (o) { return '<b>' + o.s.n + '</b>'; } }].concat(days.map(function (d) {
+      var dt = P.addDays(mon, d); return { key: 'd' + d, label: P.dowS(dt) + ' ' + P.d(dt), sort: false, html: function (o) { return o['d' + d] ? o['d' + d] : '<span class="muted">wolne</span>'; } };
+    })), { rows: grafik });
+  };
+
+  /* ---------- KOSMETYKI ---------- */
+  var koF = 'all';
+  P.views.kosmetyki = function () {
+    var low = PROD.filter(function (p) { return p.stan < p.min; });
+    var val = PROD.reduce(function (s, p) { return s + p.stan * p.cena; }, 0);
+    var ord = PROD.filter(function (p) { return p.order > 0; });
+    var sold = PROD.filter(function (p) { return p.sell; }).reduce(function (s, p) { return s + p.week * 4 * p.sell; }, 0);
+    P.strip(P.$('#ko-strip'), [
+      { label: 'Poniżej minimum', value: low.length, note: low.slice(0, 3).map(function (p) { return p.n.split(' (')[0]; }).join(', ') + (low.length > 3 ? '…' : ''), tone: low.length ? 'bad' : 'ok' },
+      { label: 'Wartość zapasu', value: P.zl(val), note: 'w cenach zakupu' },
+      { label: 'Sprzedaż kosmetyków', value: P.zl(sold), note: 'w tym miesiącu, przy kasie' },
+      { label: 'W zamówieniu', value: ord.length, note: P.zl(ord.reduce(function (s, p) { return s + p.order * p.cena; }, 0)) }
+    ]);
+    P.seg(P.$('#ko-filter'), [{ v: 'all', l: 'Wszystko' }, { v: 'low', l: 'Do zamówienia' }, { v: 'Farby', l: 'Farby' }, { v: 'Do sprzedaży', l: 'Do sprzedaży' }], koF, function (v) { koF = v; P.views.kosmetyki(); });
+    var rows = PROD.filter(function (p) { return koF === 'all' || (koF === 'low' ? p.stan < p.min : p.g === koF); });
+    P.table(P.$('#ko-table'), [
+      { key: 'n', label: 'Produkt', html: function (p) { return '<b>' + P.esc(p.n) + '</b><span class="sub">' + p.g + (p.sell ? ', cena w salonie ' + P.zl(p.sell) : '') + '</span>'; } },
+      { key: 'stan', label: 'Stan', num: 1, html: function (p) { return p.stan + ' ' + p.unit + '<span class="sub">min. ' + p.min + '</span>'; } },
+      { key: 'w', label: 'Wystarczy na', num: 1, val: function (p) { return p.stan / p.week; }, html: function (p) { var w = p.stan / p.week; return (w < 1 ? 'mniej niż tydzień' : P.num(w, w < 3 ? 1 : 0) + ' tyg.') + '<span class="sub">zużycie ' + P.num(p.week, 1) + ' ' + p.unit + '/tydz.</span>'; } },
+      { key: 'st', label: 'Status', val: function (p) { return p.stan < p.min ? 0 : (p.stan / p.week < 3 ? 1 : 2); }, html: function (p) { return p.stan < p.min ? P.chip('Zamów', 'bad') : (p.stan / p.week < 3 ? P.chip('Kończy się', 'warn') : P.chip('W porządku', 'ok')); } },
+      { key: 'a', label: '', sort: false, html: function (p) { return '<button class="btn sm" data-add="' + p.id + '">' + (p.order ? 'Zamów +1' : 'Do zamówienia') + '</button>'; } }
+    ], { rows: rows, sortKey: 'st' });
+    P.$$('[data-add]').forEach(function (b) { b.onclick = function () { var p = PROD.filter(function (x) { return x.id === b.getAttribute('data-add'); })[0]; p.order = p.order ? p.order + 1 : Math.max(1, Math.ceil(p.min * 2 - p.stan)); P.toast('W zamówieniu: ' + p.n + ', ' + p.order + ' ' + p.unit); P.views.kosmetyki(); }; });
+    var ordRows = PROD.filter(function (p) { return p.order > 0; });
+    var sum = ordRows.reduce(function (s, p) { return s + p.order * p.cena; }, 0);
+    P.table(P.$('#ko-order'), [
+      { key: 'n', label: 'Produkt', html: function (p) { return P.esc(p.n); } },
+      { key: 'order', label: 'Ilość', num: 1, html: function (p) { return p.order + ' ' + p.unit; } },
+      { key: 'v', label: 'Kwota', num: 1, val: function (p) { return p.order * p.cena; }, html: function (p) { return P.zl(p.order * p.cena); } },
+      { key: 'x', label: '', sort: false, html: function (p) { return '<button class="btn sm ghost" data-del="' + p.id + '" aria-label="Usuń ' + P.esc(p.n) + '">Usuń</button>'; } }
+    ], { rows: ordRows, empty: 'Zamówienie jest puste. Dodaj produkty z listy obok.', foot: ordRows.length ? '<tr><td>Razem</td><td></td><td class="num">' + P.zl(sum) + '</td><td></td></tr>' : '' });
+    P.$$('[data-del]').forEach(function (b) { b.onclick = function () { var p = PROD.filter(function (x) { return x.id === b.getAttribute('data-del'); })[0]; p.order = 0; P.views.kosmetyki(); }; });
+  };
+  P.$('#ko-send').addEventListener('click', function () {
+    var ord = PROD.filter(function (p) { return p.order > 0; });
+    if (!ord.length) { P.toast('Zamówienie jest puste'); return; }
+    P.toast('Zamówienie wysłane do hurtowni: ' + P.n(ord.length, 'pozycja', 'pozycje', 'pozycji'));
+    ord.forEach(function (p) { p.stan += p.order; p.order = 0; });
+    P.views.kosmetyki();
+  });
+
+  P.initTabs();
+})();
+</script>
+</body>
+</html>

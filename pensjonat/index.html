@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pensjonat – panel demo</title>
+<meta name="description" content="Panel demo dla pensjonatu i małego hotelu: kalendarz pokoi, przyjazdy, wyjazdy i sprzątanie, rezerwacje i zaliczki, obłożenie i prowizje portali, stali goście. Dane przykładowe.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
+<link rel="stylesheet" href="../assets/panel.css">
+<style>
+  /* Szyld z ciemnego drewna, pod nim tkany pas */
+  body {
+    --sign-bg: #3A2A21; --sign-fg: #F4EDE4; --sign-sub: rgba(244, 237, 228, .74);
+    --sign-pattern: repeating-linear-gradient(to bottom, transparent 0 25px, rgba(0, 0, 0, .28) 25px 27px), repeating-linear-gradient(90deg, rgba(255, 255, 255, .025) 0 1px, transparent 1px 9px);
+    --sign-band: repeating-linear-gradient(90deg, #A9402B 0 12px, #E9DCC6 12px 15px, #2F5D4A 15px 21px, #E9DCC6 21px 24px); --sign-band-h: 9px;
+    --accent: #8C3A25; --accent-ink: #FFFFFF; --accent-soft: #F5E6DF; --accent-line: #8C3A25;
+  }
+  /* Kalendarz pokoi */
+  .cal { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-box); overflow-x: auto; }
+  .cal-in { min-width: 940px; }
+  .cal-row { display: grid; grid-template-columns: 150px minmax(0, 1fr); border-bottom: 1px solid var(--line-soft); }
+  .cal-row:last-child { border-bottom: 0; }
+  .cal-l { padding: 8px 12px; font-size: 13px; border-right: 1px solid var(--line); background: var(--surface); position: sticky; left: 0; z-index: 2; }
+  .cal-l b { display: block; font-size: 14px; }
+  .cal-l span { color: var(--ink-3); font-size: 12px; }
+  .track { position: relative; min-height: 50px; cursor: copy; background-image: linear-gradient(90deg, var(--line-soft) 1px, transparent 1px); background-size: calc(100% / var(--n)) 100%; }
+  .days { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); }
+  .days div { text-align: center; padding: 7px 2px; font-size: 12px; color: var(--ink-3); border-left: 1px solid var(--line-soft); }
+  .days div b { display: block; font-size: 14px; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .days div.we { background: #F6F2EE; }
+  .days div.td { background: var(--accent); color: rgba(255, 255, 255, .85); }
+  .days div.td b { color: #fff; }
+  .col-we, .col-td { position: absolute; top: 0; bottom: 0; pointer-events: none; }
+  .col-we { background: rgba(140, 100, 70, .06); }
+  .col-td { background: rgba(140, 58, 37, .07); border-left: 2px solid var(--accent); }
+  .bk { position: absolute; top: 7px; bottom: 7px; border-radius: 5px; padding: 3px 7px; font-size: 12px; line-height: 1.25; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; cursor: pointer; appearance: none; border: 1px solid #6E2B1A; background: #A6513A; color: #fff; text-align: left; font-family: inherit; }
+  .bk b { font-weight: 650; display: block; overflow: hidden; text-overflow: ellipsis; }
+  .bk span { opacity: .88; }
+  .bk.dep { background: repeating-linear-gradient(-45deg, #FBEED6 0 6px, #F5E1BA 6px 12px); color: var(--warn); border-color: #D9B66E; }
+  .bk.portal { background: #5E6E7A; border-color: #46535C; }
+  .bk.block { background: repeating-linear-gradient(-45deg, #E6E8EA 0 6px, #DADDE0 6px 12px); color: var(--ink-2); border-color: var(--line); }
+  .legend { display: flex; gap: 8px 16px; flex-wrap: wrap; font-size: 12.5px; color: var(--ink-2); align-items: center; }
+  .legend i { display: inline-block; width: 22px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 5px; }
+  .rooms { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .room { border: 1px solid var(--line); border-radius: var(--r-box); background: var(--surface); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+  .room b { font-size: 14.5px; }
+  .room span.s { font-size: 12.5px; color: var(--ink-3); }
+  .room .chip, .room .btn { align-self: flex-start; }
+  @media (max-width: 960px) { .rooms { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+</style>
+</head>
+<body>
+
+<header class="sign">
+  <div class="sign-top">
+    <a href="../index.html">Wszystkie panele</a>
+    <span class="demo-flag">Dane przykładowe</span>
+  </div>
+  <div class="sign-inner">
+    <div>
+      <h1>Twój pensjonat</h1>
+      <p class="sign-sub">Kalendarz pokoi, przyjazdy i sprzątanie, zaliczki, obłożenie i prowizje portali</p>
+    </div>
+    <div class="sign-meta"><strong id="sign-day"></strong><span id="sign-sub"></span></div>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="Moduły panelu">
+  <div class="tabs-inner" role="tablist">
+    <button class="tab" data-tab="kalendarz">Kalendarz pokoi</button>
+    <button class="tab" data-tab="dzis">Dziś</button>
+    <button class="tab" data-tab="rezerwacje">Rezerwacje i zaliczki</button>
+    <button class="tab" data-tab="oblozenie">Obłożenie i kanały</button>
+    <button class="tab" data-tab="goscie">Stali goście</button>
+  </div>
+</nav>
+
+<main>
+  <!-- KALENDARZ -->
+  <section data-panel="kalendarz" class="stack">
+    <div id="ka-strip"></div>
+    <div class="row-between">
+      <div class="legend"><span><i style="background:#A6513A"></i>bezpośrednio, opłacona zaliczka</span><span><i style="background:repeating-linear-gradient(-45deg,#FBEED6 0 4px,#F5E1BA 4px 8px);border:1px solid #D9B66E"></i>czeka na zaliczkę</span><span><i style="background:#5E6E7A"></i>z portalu</span><span><i style="background:#E0E3E6;border:1px solid var(--line)"></i>blokada</span></div>
+      <div class="row"><div id="ka-week"></div><button class="btn primary" id="ka-new">Nowa rezerwacja</button></div>
+    </div>
+    <div class="cal"><div class="cal-in" id="ka-cal"></div></div>
+    <p class="small muted">Kliknij rezerwację, żeby zobaczyć szczegóły, albo puste miejsce w wierszu pokoju, żeby dodać rezerwację od tego dnia.</p>
+  </section>
+
+  <!-- DZIŚ -->
+  <section data-panel="dzis" class="stack">
+    <div id="dz-strip"></div>
+    <div class="cols-even">
+      <div class="box">
+        <div class="box-h"><h2>Przyjazdy</h2><p>zameldowanie od 15:00</p></div>
+        <div class="box-b flush" id="dz-in"></div>
+      </div>
+      <div class="box">
+        <div class="box-h"><h2>Wyjazdy</h2><p>wymeldowanie do 11:00</p></div>
+        <div class="box-b flush" id="dz-out"></div>
+      </div>
+    </div>
+    <div class="box">
+      <div class="box-h"><h2>Sprzątanie</h2><p>stan pokoi na dziś</p></div>
+      <div class="box-b"><div class="rooms" id="dz-rooms"></div></div>
+    </div>
+  </section>
+
+  <!-- REZERWACJE -->
+  <section data-panel="rezerwacje" class="stack">
+    <div id="re-strip"></div>
+    <div class="box">
+      <div class="box-h"><div id="re-filter"></div><p>Zaliczka 30% w ciągu 3 dni od rezerwacji bezpośredniej</p></div>
+      <div class="box-b flush scroll-lg" id="re-table"></div>
+    </div>
+  </section>
+
+  <!-- OBŁOŻENIE -->
+  <section data-panel="oblozenie" class="stack">
+    <div id="ob-strip"></div>
+    <div class="cols-even">
+      <div class="box">
+        <div class="box-h"><h2>Obłożenie pokoi</h2><p>przyszłe miesiące: zarezerwowane do dziś</p></div>
+        <div class="box-b"><div id="ob-bars"></div></div>
+      </div>
+      <div class="box">
+        <div class="box-h"><h2>Kanały sprzedaży</h2><p>ostatnie 90 dni i nadchodzące pobyty</p></div>
+        <div class="box-b flush" id="ob-ch"></div>
+        <div class="box-b"><p class="small muted">Prowizje portali przyjęte w panelu jako przykład. Wpisz swoje stawki w pliku.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- GOŚCIE -->
+  <section data-panel="goscie" class="stack">
+    <div id="go-strip"></div>
+    <div class="box">
+      <div class="box-h"><h2>Goście, którzy wracają</h2><button class="btn sm primary" id="go-offer">Wyślij ofertę na najbliższy długi weekend</button></div>
+      <div class="box-b flush" id="go-table"></div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <span>Panel demo. Goście, rezerwacje i kwoty są wymyślone, zmiany znikają po odświeżeniu strony.</span>
+  <a href="../index.html">Zobacz pozostałe panele</a>
+</footer>
+
+<script src="../assets/panel.js"></script>
+<script>
+(function () {
+  'use strict';
+  var r = P.rng(6123);
+  var TODAY = P.today();
+  var DEP = 0.3;                 /* zaliczka przy rezerwacji bezpośredniej */
+  var DEP_DAYS = 3;              /* tyle dni na wpłatę zaliczki */
+  var COMM = { 'Booking.com': 0.15, 'Airbnb': 0.03, 'telefon': 0, 'strona www': 0 };   /* przykładowe prowizje */
+
+  /* ---------- Dane przykładowe ---------- */
+  var ROOMS = [
+    { id: 'r1', n: 'Brzoza', cap: 2, price: 280, kind: 'pokój 2-osobowy' },
+    { id: 'r2', n: 'Buk', cap: 2, price: 280, kind: 'pokój 2-osobowy' },
+    { id: 'r3', n: 'Dąb', cap: 3, price: 340, kind: 'pokój 3-osobowy' },
+    { id: 'r4', n: 'Jodła', cap: 3, price: 330, kind: 'pokój 2+1' },
+    { id: 'r5', n: 'Lipa', cap: 4, price: 420, kind: 'rodzinny' },
+    { id: 'r6', n: 'Modrzew', cap: 2, price: 300, kind: 'z balkonem' },
+    { id: 'r7', n: 'Sosna', cap: 2, price: 260, kind: 'pokój 2-osobowy' },
+    { id: 'r8', n: 'Świerk', cap: 4, price: 520, kind: 'apartament z aneksem' }
+  ];
+  var RM = {}; ROOMS.forEach(function (x) { RM[x.id] = x; });
+  var FIRST = ['Anna', 'Piotr', 'Katarzyna', 'Michał', 'Joanna', 'Tomasz', 'Magdalena', 'Paweł', 'Agnieszka', 'Krzysztof', 'Monika', 'Marcin', 'Ewa', 'Łukasz', 'Natalia', 'Jakub', 'Karolina', 'Adam', 'Aleksandra', 'Grzegorz'];
+  var LAST = ['Nowak', 'Kowalski', 'Wiśniewski', 'Wójcik', 'Kamiński', 'Lewandowski', 'Zieliński', 'Szymański', 'Woźniak', 'Dąbrowski', 'Kozłowski', 'Mazur', 'Krawczyk', 'Piotrowski', 'Grabowski', 'Pawłowski', 'Michalski', 'Król', 'Wieczorek', 'Jabłoński'];
+  var NOTES = ['', '', '', 'łóżeczko dla dziecka', 'przyjazd po 20:00', 'z psem', 'rocznica, prosimy o kwiaty w pokoju', 'śniadanie bezglutenowe', 'parking dla busa'];
+  var SRC = ['Booking.com', 'Booking.com', 'Booking.com', 'telefon', 'strona www', 'strona www', 'Airbnb', 'telefon'];
+  function guest() { var f = P.pick(r, FIRST), l = P.pick(r, LAST); if (/a$/.test(f)) l = l.replace(/ski$/, 'ska').replace(/cki$/, 'cka').replace(/dzki$/, 'dzka'); return f + ' ' + l; }
+  var BK = [], bkN = 0;
+  ROOMS.forEach(function (room, ri) {
+    var d = P.addDays(TODAY, -P.int(r, 2, 9));
+    while (P.days(TODAY, d) < 75) {
+      var nights = P.pick(r, [1, 2, 2, 2, 3, 3, 4, 5, 7]);
+      var src = P.pick(r, SRC), from = d, to = P.addDays(d, nights);
+      var made = P.addDays(from, -P.int(r, 3, 60));
+      if (made > TODAY) made = P.addDays(TODAY, -P.int(r, 0, 2));
+      var direct = !COMM[src];
+      var b = { id: 'b' + (bkN++), room: room.id, g: guest(), n: Math.min(room.cap, P.int(r, 1, room.cap)), from: from, to: to, src: src, price: Math.round(room.price * nights * (P.days(TODAY, from) > 40 ? 1.08 : 1) / 10) * 10, made: made, note: P.pick(r, NOTES), block: false, inn: false, out: false };
+      b.depAmt = direct ? Math.round(b.price * DEP / 10) * 10 : 0;
+      b.depPaid = direct ? (P.days(made, TODAY) > DEP_DAYS + 1 || r() < 0.55) : true;
+      BK.push(b);
+      var gap = P.pick(r, [0, 0, 1, 1, 2, 3, 4, 6]);
+      if (from.getDay() === 0 || from.getDay() === 1) gap = Math.max(gap, 1);
+      d = P.addDays(to, gap);
+    }
+  });
+  /* blokada pokoju na drobny remont */
+  BK = BK.filter(function (b) { return !(b.room === 'r7' && P.days(TODAY, b.from) >= 8 && P.days(TODAY, b.from) < 12); });
+  BK.push({ id: 'b' + (bkN++), room: 'r7', g: 'Malowanie pokoju', n: 0, from: P.addDays(TODAY, 8), to: P.addDays(TODAY, 10), src: '', price: 0, made: TODAY, note: '', block: true, depAmt: 0, depPaid: true });
+  BK = BK.filter(function (b) { return b.block || !BK.some(function (o) { return o.block && o.room === b.room && o.from < b.to && b.from < o.to; }); });
+  /* dzisiejsze przyjazdy i wyjazdy: część gości już się zameldowała / wymeldowała */
+  BK.forEach(function (b) { if (+b.to === +TODAY && r() < 0.5) b.out = true; if (P.days(b.from, TODAY) > 0) b.inn = true; });
+  /* dwie rezerwacje bezpośrednie bez zaliczki po terminie */
+  BK.filter(function (b) { return b.depAmt && P.days(TODAY, b.from) > 6; }).slice(1, 3).forEach(function (b) { b.made = P.addDays(TODAY, -6); b.depPaid = false; });
+  var CLEAN = {};   /* pokoje posprzątane dziś */
+
+  /* stali goście */
+  var REG = [
+    ['Anna i Marek Zielińscy', 6, 'Modrzew', 'zawsze pokój z balkonem'], ['Rodzina Kowalskich', 4, 'Lipa', 'dwoje dzieci, łóżeczko'], ['Tomasz Woźniak', 5, 'Sosna', 'przyjeżdża na ryby, wczesne śniadanie'],
+    ['Ewa Mazur', 3, 'Brzoza', 'z psem'], ['Grupa nordic walking Kije', 3, 'cały pensjonat', 'wyjazd firmowy w maju'], ['Joanna i Piotr Król', 4, 'Świerk', 'rocznica w lipcu'],
+    ['Krzysztof Pawłowski', 2, 'Dąb', 'faktura na firmę'], ['Magdalena Wieczorek', 3, 'Jodła', 'śniadanie wegetariańskie']
+  ].map(function (g, i) { return { n: g[0], stays: g[1], room: g[2], note: g[3], last: P.addDays(TODAY, -P.int(r, 40, 400)), spent: g[1] * P.int(r, 700, 1500), consent: i !== 4, sent: false }; });
+
+  P.$('#sign-day').textContent = P.dayTitle(TODAY);
+  P.$('#sign-sub').textContent = ROOMS.length + ' pokoi, ' + ROOMS.reduce(function (s, x) { return s + x.cap; }, 0) + ' miejsc';
+
+  function stays(d) { return BK.filter(function (b) { return !b.block && b.from <= d && d < b.to; }); }
+  function nights(b) { return P.days(b.from, b.to); }
+  function depDue(b) { return P.addDays(b.made, DEP_DAYS); }
+  function depState(b) { if (!b.depAmt) return 'portal'; if (b.depPaid) return 'paid'; return P.days(TODAY, depDue(b)) < 0 ? 'late' : 'wait'; }
+
+  /* ---------- KALENDARZ ---------- */
+  var kaOff = 0, N = 15;
+  P.views.kalendarz = function () {
+    var occ = stays(TODAY).length, wk = 0, wkMax = 0;
+    for (var i = 0; i < 7; i++) { wk += stays(P.addDays(TODAY, i)).length; wkMax += ROOMS.length; }
+    var arr = BK.filter(function (b) { return !b.block && +b.from === +TODAY; }), dep = BK.filter(function (b) { return !b.block && +b.to === +TODAY; });
+    var free = []; for (var j = 0; j < 21; j++) { var d = P.addDays(TODAY, j); if (d.getDay() === 6) free.push([d, ROOMS.length - stays(d).length]); }
+    P.strip(P.$('#ka-strip'), [
+      { label: 'Zajęte dziś', value: occ + ' z ' + ROOMS.length, note: P.n(stays(TODAY).reduce(function (s, b) { return s + b.n; }, 0), 'gość', 'gości', 'gości') },
+      { label: 'Obłożenie 7 dni', value: P.num(wk / wkMax * 100) + '%', note: 'pokojonoce zarezerwowane' },
+      { label: 'Dziś przyjazdy i wyjazdy', value: arr.length + ' / ' + dep.length, note: 'szczegóły w zakładce Dziś' },
+      { label: 'Wolne w najbliższą sobotę', value: free[0][1] + ' z ' + ROOMS.length, note: P.d(free[0][0]) + '; kolejne soboty: ' + free.slice(1).map(function (f) { return f[1] + ' wolne ' + P.d(f[0]); }).join(', '), tone: free[0][1] > 3 ? 'warn' : '' }
+    ]);
+    P.seg(P.$('#ka-week'), [{ v: 0, l: 'Od dziś' }, { v: 14, l: 'Za 2 tygodnie' }, { v: 28, l: 'Za 4 tygodnie' }], kaOff, function (v) { kaOff = +v; P.views.kalendarz(); });
+    var start = P.addDays(TODAY, kaOff - 1);
+    var h = '<div class="cal-row" style="--n:' + N + '"><div class="cal-l"><b>Pokój</b><span>cena za noc</span></div><div class="days">';
+    for (var k = 0; k < N; k++) { var dd = P.addDays(start, k); h += '<div class="' + (+dd === +TODAY ? 'td' : (dd.getDay() === 5 || dd.getDay() === 6 ? 'we' : '')) + '">' + P.dowS(dd) + '<b>' + dd.getDate() + '</b></div>'; }
+    h += '</div></div>';
+    ROOMS.forEach(function (room) {
+      h += '<div class="cal-row" style="--n:' + N + '"><div class="cal-l" title="' + room.kind + '"><b>' + room.n + '</b><span>' + room.cap + ' os., ' + P.zl(room.price) + '</span></div><div class="track" data-room="' + room.id + '" data-start="' + P.iso(start) + '">';
+      for (var k2 = 0; k2 < N; k2++) { var d2 = P.addDays(start, k2); if (d2.getDay() === 5 || d2.getDay() === 6) h += '<div class="col-we" style="left:' + (k2 / N * 100) + '%;width:' + (100 / N) + '%"></div>'; if (+d2 === +TODAY) h += '<div class="col-td" style="left:' + (k2 / N * 100) + '%;width:' + (100 / N) + '%"></div>'; }
+      BK.filter(function (b) { return b.room === room.id && b.to > start && b.from < P.addDays(start, N); }).forEach(function (b) {
+        var s = Math.max(-0.5, P.days(start, b.from)) + 0.5, e = Math.min(N, P.days(start, b.to) + 0.5);
+        var cls = b.block ? 'block' : (!b.depAmt ? 'portal' : (b.depPaid ? '' : 'dep'));
+        h += '<button class="bk ' + cls + '" data-id="' + b.id + '" style="left:calc(' + (s / N * 100) + '% + 2px);width:calc(' + ((e - s) / N * 100) + '% - 4px)" title="' + P.esc(b.g + (b.block ? '' : ', ' + b.n + ' os., ' + b.src)) + '">' +
+          '<b>' + P.esc(b.g) + '</b><span>' + (b.block ? 'pokój wyłączony' : b.n + ' os., ' + b.src + (cls === 'dep' ? ', bez zaliczki' : '')) + '</span></button>';
+      });
+      h += '</div></div>';
+    });
+    P.$('#ka-cal').innerHTML = h;
+    P.$$('#ka-cal .bk').forEach(function (x) { x.onclick = function (e) { e.stopPropagation(); openBk(BK.filter(function (b) { return b.id === x.getAttribute('data-id'); })[0]); }; });
+    P.$$('#ka-cal .track').forEach(function (t) { t.onclick = function (e) {
+      var rc = t.getBoundingClientRect(), k = Math.floor((e.clientX - rc.left) / rc.width * N), d = P.addDays(P.fromIso(t.getAttribute('data-start')), k);
+      newBk(t.getAttribute('data-room'), d < TODAY ? TODAY : d); }; });
+  };
+  function openBk(b) {
+    if (b.block) { P.modal({ title: b.g, sub: RM[b.room].n + ', ' + P.d(b.from) + '–' + P.d(b.to), body: '<p class="lead">Pokój wyłączony ze sprzedaży. Portale mają zamknięte te daty.</p>', actions: [{ label: 'Usuń blokadę', onClick: function (close) { BK.splice(BK.indexOf(b), 1); close(); P.toast('Blokada usunięta, pokój wrócił do sprzedaży'); P.refresh(); } }, { label: 'Zamknij', ghost: true }] }); return; }
+    var ds = depState(b);
+    var body = '<dl class="kv"><dt>Pokój</dt><dd>' + RM[b.room].n + ', ' + RM[b.room].kind + '</dd><dt>Pobyt</dt><dd>' + P.dowS(b.from) + ' ' + P.d(b.from) + ' – ' + P.dowS(b.to) + ' ' + P.d(b.to) + ', ' + P.n(nights(b), 'noc', 'noce', 'nocy') + '</dd><dt>Goście</dt><dd>' + b.n + '</dd>' +
+      '<dt>Źródło</dt><dd>' + b.src + ', zarezerwowano ' + P.d(b.made) + '</dd><dt>Cena</dt><dd>' + P.zl(b.price) + (COMM[b.src] ? ', prowizja ' + P.zl(b.price * COMM[b.src]) : '') + '</dd>' +
+      '<dt>Zaliczka</dt><dd>' + (ds === 'portal' ? 'nie dotyczy, płatność przez portal lub na miejscu' : P.zl(b.depAmt) + ', ' + (ds === 'paid' ? 'wpłacona' : ds === 'late' ? 'po terminie (' + P.d(depDue(b)) + ')' : 'termin ' + P.d(depDue(b)))) + '</dd>' +
+      (b.note ? '<dt>Uwagi</dt><dd>' + P.esc(b.note) + '</dd>' : '') + '</dl>';
+    var acts = [{ label: 'Zamknij', ghost: true }];
+    if (ds === 'wait' || ds === 'late') {
+      acts.unshift({ label: 'Anuluj rezerwację', onClick: function (close) { BK.splice(BK.indexOf(b), 1); close(); P.toast('Rezerwacja anulowana, pokój ' + RM[b.room].n + ' wolny ' + P.d(b.from) + '–' + P.d(b.to)); P.refresh(); } });
+      acts.push({ label: 'Zaliczka wpłynęła', primary: true, onClick: function (close) { b.depPaid = true; close(); P.toast('Zaliczka zaksięgowana: ' + b.g + ', ' + P.zl(b.depAmt)); P.refresh(); } });
+    }
+    P.modal({ title: b.g, sub: 'Rezerwacja', body: body, actions: acts });
+  }
+  function newBk(room, from) {
+    var body = '<div class="form-grid"><label class="field full"><span>Gość</span><input id="nb-g" placeholder="Imię i nazwisko"></label>' +
+      '<label class="field"><span>Pokój</span><select id="nb-r">' + P.options(ROOMS.map(function (x) { return { v: x.id, l: x.n + ' (' + x.kind + ', ' + x.price + ' zł)' }; }), room || 'r1') + '</select></label>' +
+      '<label class="field"><span>Liczba gości</span><input id="nb-n" type="number" min="1" max="6" value="2"></label>' +
+      '<label class="field"><span>Przyjazd</span><input id="nb-f" type="date" value="' + P.iso(from || TODAY) + '"></label>' +
+      '<label class="field"><span>Noce</span><input id="nb-k" type="number" min="1" max="30" value="2"></label>' +
+      '<label class="field"><span>Skąd</span><select id="nb-s"><option>telefon</option><option>strona www</option></select></label>' +
+      '<label class="field"><span>Uwagi</span><input id="nb-u" placeholder="Np. przyjazd po 20:00"></label>' +
+      '<p class="full small" id="nb-err" style="color:var(--bad)"></p></div>';
+    P.modal({ title: 'Nowa rezerwacja', sub: 'Po zapisaniu gość dostanie e-mail z numerem konta do zaliczki', body: body, actions: [
+      { label: 'Anuluj', ghost: true },
+      { label: 'Zapisz rezerwację', primary: true, onClick: function (close, d) {
+        var g = P.$('#nb-g', d).value.trim(), rm = P.$('#nb-r', d).value, f = P.$('#nb-f', d).value, k = +P.$('#nb-k', d).value, n = +P.$('#nb-n', d).value;
+        var err = P.$('#nb-err', d);
+        if (!g) { err.textContent = 'Wpisz imię i nazwisko gościa.'; return; }
+        if (!f || P.fromIso(f) < TODAY) { err.textContent = 'Wybierz dzisiejszą albo późniejszą datę przyjazdu.'; return; }
+        if (!(k >= 1)) { err.textContent = 'Wpisz liczbę nocy.'; return; }
+        if (n > RM[rm].cap) { err.textContent = 'Pokój ' + RM[rm].n + ' mieści ' + RM[rm].cap + ' os. Wybierz większy pokój.'; return; }
+        var from = P.fromIso(f), to = P.addDays(from, k);
+        var clash = BK.filter(function (b) { return b.room === rm && b.from < to && from < b.to; })[0];
+        if (clash) { err.textContent = 'Pokój ' + RM[rm].n + ' jest zajęty ' + P.d(clash.from) + '–' + P.d(clash.to) + ' (' + clash.g + '). Zmień daty albo pokój.'; return; }
+        var price = RM[rm].price * k;
+        BK.push({ id: 'b' + (bkN++), room: rm, g: g, n: n, from: from, to: to, src: P.$('#nb-s', d).value, price: price, made: TODAY, note: P.$('#nb-u', d).value.trim(), block: false, depAmt: Math.round(price * DEP / 10) * 10, depPaid: false });
+        close(); P.toast('Zapisano: ' + g + ', ' + RM[rm].n + ' ' + P.d(from) + '–' + P.d(to) + '. Zaliczka ' + P.zl(Math.round(price * DEP / 10) * 10) + ' do ' + P.d(P.addDays(TODAY, DEP_DAYS))); P.refresh();
+      } }
+    ] });
+  }
+  P.$('#ka-new').addEventListener('click', function () { newBk('r1', TODAY); });
+
+  /* ---------- DZIŚ ---------- */
+  P.views.dzis = function () {
+    var arr = BK.filter(function (b) { return !b.block && +b.from === +TODAY; }), dep = BK.filter(function (b) { return !b.block && +b.to === +TODAY; });
+    var toClean = ROOMS.filter(function (x) { return roomState(x)[0] === 'dirty'; });
+    var dueTotal = arr.filter(function (b) { return !b.inn; }).reduce(function (s, b) { return s + (b.price - (b.depPaid ? b.depAmt : 0)) * (COMM[b.src] && b.src === 'Booking.com' ? 1 : 1); }, 0);
+    P.strip(P.$('#dz-strip'), [
+      { label: 'Przyjazdy', value: arr.length, note: arr.filter(function (b) { return b.inn; }).length + ' już zameldowanych' },
+      { label: 'Wyjazdy', value: dep.length, note: dep.filter(function (b) { return b.out; }).length + ' już rozliczonych' },
+      { label: 'Do sprzątania', value: toClean.length, note: toClean.map(function (x) { return x.n; }).join(', ') || 'wszystko gotowe', tone: toClean.length ? 'warn' : 'ok' },
+      { label: 'Do pobrania przy meldunku', value: P.zl(dueTotal), note: 'reszta po zaliczkach' }
+    ]);
+    P.table(P.$('#dz-in'), [
+      { key: 'g', label: 'Gość', html: function (b) { return '<b>' + P.esc(b.g) + '</b><span class="sub">' + RM[b.room].n + ', ' + b.n + ' os., ' + P.n(nights(b), 'noc', 'noce', 'nocy') + '</span>'; } },
+      { key: 'note', label: 'Uwagi', html: function (b) { return b.note ? P.esc(b.note) : '<span class="muted">—</span>'; } },
+      { key: 'pay', label: 'Do zapłaty', num: 1, val: function (b) { return b.price - (b.depPaid ? b.depAmt : 0); }, html: function (b) { return P.zl(b.price - (b.depPaid ? b.depAmt : 0)) + '<span class="sub">' + (b.src === 'Booking.com' ? 'przez portal lub na miejscu' : b.depPaid && b.depAmt ? 'po zaliczce' : b.depAmt ? 'zaliczka nie wpłynęła' : b.src) + '</span>'; } },
+      { key: 'a', label: '', sort: false, html: function (b) { return b.inn ? P.chip('Zameldowany', 'ok') : '<button class="btn sm" data-in="' + b.id + '">Zamelduj</button>'; } }
+    ], { rows: arr, empty: 'Dziś nikt nie przyjeżdża.' });
+    P.table(P.$('#dz-out'), [
+      { key: 'g', label: 'Gość', html: function (b) { return '<b>' + P.esc(b.g) + '</b><span class="sub">' + RM[b.room].n + ', ' + P.n(nights(b), 'noc', 'noce', 'nocy') + '</span>'; } },
+      { key: 'src', label: 'Źródło' },
+      { key: 'a', label: '', sort: false, html: function (b) { return b.out ? P.chip('Rozliczony', 'ok') : '<button class="btn sm" data-out="' + b.id + '">Wymelduj i rozlicz</button>'; } }
+    ], { rows: dep, empty: 'Dziś nikt nie wyjeżdża.' });
+    P.$$('[data-in]').forEach(function (x) { x.onclick = function () { var b = BK.filter(function (y) { return y.id === x.getAttribute('data-in'); })[0]; b.inn = true; P.toast('Zameldowano: ' + b.g + ', pokój ' + RM[b.room].n); P.refresh(); }; });
+    P.$$('[data-out]').forEach(function (x) { x.onclick = function () { var b = BK.filter(function (y) { return y.id === x.getAttribute('data-out'); })[0]; b.out = true; P.toast('Wymeldowano: ' + b.g + '. Pokój ' + RM[b.room].n + ' do sprzątania'); P.refresh(); }; });
+    P.$('#dz-rooms').innerHTML = ROOMS.map(function (x) {
+      var s = roomState(x);
+      return '<div class="room"><b>' + x.n + '</b><span class="s">' + s[2] + '</span>' + P.chip(s[1], { dirty: 'warn', ready: 'ok', busy: '', free: 'ok', wait: 'info' }[s[0]]) + (s[0] === 'dirty' ? '<button class="btn sm" data-cl="' + x.id + '">Posprzątany</button>' : '') + '</div>';
+    }).join('');
+    P.$$('[data-cl]').forEach(function (x) { x.onclick = function () { CLEAN[x.getAttribute('data-cl')] = true; P.toast('Pokój ' + RM[x.getAttribute('data-cl')].n + ' gotowy'); P.refresh(); }; });
+  };
+  function roomState(x) {
+    var out = BK.filter(function (b) { return b.room === x.id && !b.block && +b.to === +TODAY; })[0], inn = BK.filter(function (b) { return b.room === x.id && !b.block && +b.from === +TODAY; })[0];
+    var stay = BK.filter(function (b) { return b.room === x.id && !b.block && b.from < TODAY && TODAY < b.to; })[0];
+    if (stay) return ['busy', 'Zajęty', P.esc(stay.g) + ', do ' + P.d(stay.to)];
+    if (out && !out.out) return ['wait', 'Czeka na wyjazd', 'wymeldowanie do 11:00' + (inn ? ', potem przyjazd' : '')];
+    if (out && !CLEAN[x.id]) return ['dirty', 'Do sprzątania', inn ? 'przyjazd dziś: ' + P.esc(inn.g) : 'po wyjeździe'];
+    if (inn) return ['ready', 'Gotowy na przyjazd', P.esc(inn.g) + ', ' + inn.n + ' os.'];
+    return ['free', 'Wolny, czysty', 'bez gości dziś'];
+  }
+
+  /* ---------- REZERWACJE ---------- */
+  var reF = 'dep';
+  P.views.rezerwacje = function () {
+    var up = BK.filter(function (b) { return !b.block && b.from >= TODAY; });
+    var wait = up.filter(function (b) { return depState(b) === 'wait'; }), late = up.filter(function (b) { return depState(b) === 'late'; });
+    var paid = up.filter(function (b) { return b.depAmt && b.depPaid; }).reduce(function (s, b) { return s + b.depAmt; }, 0);
+    P.strip(P.$('#re-strip'), [
+      { label: 'Nadchodzące rezerwacje', value: up.length, note: P.zl(up.reduce(function (s, b) { return s + b.price; }, 0)) + ' wartości pobytów' },
+      { label: 'Czeka na zaliczkę', value: wait.length, note: P.zl(wait.reduce(function (s, b) { return s + b.depAmt; }, 0)) },
+      { label: 'Zaliczka po terminie', value: late.length, note: late.length ? 'przypomnij albo zwolnij pokój' : 'brak', tone: late.length ? 'bad' : 'ok' },
+      { label: 'Wpłacone zaliczki', value: P.zl(paid), note: 'na nadchodzące pobyty' }
+    ]);
+    P.seg(P.$('#re-filter'), [{ v: 'dep', l: 'Bez zaliczki' }, { v: 'all', l: 'Wszystkie nadchodzące' }], reF, function (v) { reF = v; P.views.rezerwacje(); });
+    var rows = up.filter(function (b) { return reF === 'all' || depState(b) === 'wait' || depState(b) === 'late'; });
+    P.table(P.$('#re-table'), [
+      { key: 'from', label: 'Przyjazd', val: function (b) { return +b.from; }, html: function (b) { return '<b>' + P.dowS(b.from) + ' ' + P.d(b.from) + '</b><span class="sub">' + P.n(nights(b), 'noc', 'noce', 'nocy') + ', ' + P.rel(b.from) + '</span>'; } },
+      { key: 'g', label: 'Gość', html: function (b) { return P.esc(b.g) + '<span class="sub">' + RM[b.room].n + ', ' + b.n + ' os.</span>'; } },
+      { key: 'src', label: 'Źródło' },
+      { key: 'price', label: 'Cena', num: 1, html: function (b) { return P.zl(b.price); } },
+      { key: 'dep', label: 'Zaliczka', val: function (b) { return ['late', 'wait', 'paid', 'portal'].indexOf(depState(b)); }, html: function (b) { var s = depState(b); return s === 'portal' ? '<span class="muted">nie dotyczy</span>' : P.zl(b.depAmt) + '<span class="sub">' + (s === 'paid' ? 'wpłacona' : 'termin ' + P.d(depDue(b))) + '</span>'; } },
+      { key: 'st', label: 'Status', val: function (b) { return ['late', 'wait', 'paid', 'portal'].indexOf(depState(b)); }, html: function (b) { var s = depState(b); return s === 'late' ? P.chip('Po terminie', 'bad') : s === 'wait' ? P.chip('Czeka', 'warn') : s === 'paid' ? P.chip('Potwierdzona', 'ok') : P.chip('Portal', 'info'); } },
+      { key: 'a', label: '', sort: false, html: function (b) { var s = depState(b); return s === 'wait' || s === 'late' ? '<div class="acts"><button class="btn sm ghost" data-rm="' + b.id + '">Przypomnij</button><button class="btn sm" data-dp="' + b.id + '">Wpłynęła</button></div>' : ''; } }
+    ], { rows: rows, sortKey: 'dep', empty: 'Wszystkie zaliczki wpłacone.' });
+    P.$$('[data-dp]').forEach(function (x) { x.onclick = function () { var b = BK.filter(function (y) { return y.id === x.getAttribute('data-dp'); })[0]; b.depPaid = true; P.toast('Zaliczka zaksięgowana: ' + b.g + ', ' + P.zl(b.depAmt)); P.refresh(); }; });
+    P.$$('[data-rm]').forEach(function (x) { x.onclick = function () { var b = BK.filter(function (y) { return y.id === x.getAttribute('data-rm'); })[0]; P.toast('Przypomnienie o zaliczce wysłane: ' + b.g); }; });
+  };
+
+  /* ---------- OBŁOŻENIE ---------- */
+  P.views.oblozenie = function () {
+    var months = [];
+    for (var m = -2; m <= 2; m++) months.push(new Date(TODAY.getFullYear(), TODAY.getMonth() + m, 1));
+    var PAST = [0.71, 0.64];
+    var rows = months.map(function (ms, i) {
+      var me = new Date(ms.getFullYear(), ms.getMonth() + 1, 1), days = P.days(ms, me), cap = days * ROOMS.length, n = 0, rev = 0;
+      if (i < 2) { n = Math.round(cap * PAST[i]); rev = n * 318; }
+      else for (var d = new Date(ms); d < me; d = P.addDays(d, 1)) { var st = stays(d); n += st.length; rev += st.reduce(function (s, b) { return s + b.price / nights(b); }, 0); }
+      return { l: P.MON[ms.getMonth()], occ: n / cap, n: n, rev: rev, fut: i > 2, cur: i === 2 };
+    });
+    var cur = rows[2];
+    P.strip(P.$('#ob-strip'), [
+      { label: 'Obłożenie w tym miesiącu', value: P.num(cur.occ * 100) + '%', note: P.n(cur.n, 'pokojonoc', 'pokojonoce', 'pokojonocy') + ' zarezerwowanych' },
+      { label: 'Średnia cena za noc', value: P.zl(cur.rev / Math.max(1, cur.n)), note: 'ADR, w tym miesiącu' },
+      { label: 'Przychód na pokój', value: P.zl(cur.rev / ROOMS.length / P.days(new Date(TODAY.getFullYear(), TODAY.getMonth(), 1), new Date(TODAY.getFullYear(), TODAY.getMonth() + 1, 1))), note: 'RevPAR, na dzień' },
+      { label: 'Zarezerwowane na 2 kolejne miesiące', value: P.zl(rows.slice(3).reduce(function (s, x) { return s + x.rev; }, 0)), note: 'wartość pobytów już w kalendarzu' }
+    ]);
+    P.bars(P.$('#ob-bars'), rows.map(function (x) { return { label: x.l + (x.cur ? ' (trwa)' : x.fut ? ' (na dziś)' : ''), value: x.occ * 100, text: P.num(x.occ * 100) + '%', tone: x.fut ? '' : (x.occ >= 0.6 ? 'ok' : 'warn') }; }), { max: 100 });
+    var ch = Object.keys(COMM).map(function (k) {
+      var list = BK.filter(function (b) { return b.src === k && P.days(b.from, TODAY) < 90; });
+      var val = list.reduce(function (s, b) { return s + b.price; }, 0);
+      return { k: k, n: list.length, val: val, comm: val * COMM[k], net: val * (1 - COMM[k]) };
+    });
+    var tot = ch.reduce(function (s, c) { return s + c.val; }, 0);
+    P.table(P.$('#ob-ch'), [
+      { key: 'k', label: 'Kanał' },
+      { key: 'n', label: 'Rezerwacje', num: 1, html: function (c) { return c.n + '<span class="sub">' + P.num(c.val / tot * 100) + '% wartości</span>'; } },
+      { key: 'val', label: 'Wartość', num: 1, html: function (c) { return P.zl(c.val); } },
+      { key: 'comm', label: 'Prowizja', num: 1, html: function (c) { return c.comm ? P.zl(c.comm) + '<span class="sub">' + P.num(COMM[c.k] * 100) + '%</span>' : '<span class="muted">0 zł</span>'; } },
+      { key: 'net', label: 'Zostaje', num: 1, html: function (c) { return '<b>' + P.zl(c.net) + '</b>'; } }
+    ], { rows: ch, sortKey: 'val', sortDir: -1, foot: '<tr><td>Razem</td><td></td><td class="num">' + P.zl(tot) + '</td><td class="num">' + P.zl(ch.reduce(function (s, c) { return s + c.comm; }, 0)) + '</td><td class="num">' + P.zl(ch.reduce(function (s, c) { return s + c.net; }, 0)) + '</td></tr>' });
+  };
+
+  /* ---------- STALI GOŚCIE ---------- */
+  P.views.goscie = function () {
+    var back = REG.filter(function (g) { return P.days(g.last, TODAY) > 300; });
+    P.strip(P.$('#go-strip'), [
+      { label: 'Stali goście', value: REG.length, note: 'co najmniej 2 pobyty' },
+      { label: 'Pobyty stałych gości', value: REG.reduce(function (s, g) { return s + g.stays; }, 0), note: P.zl(REG.reduce(function (s, g) { return s + g.spent; }, 0)) + ' łącznie' },
+      { label: 'Zgoda na oferty', value: REG.filter(function (g) { return g.consent; }).length + ' z ' + REG.length, note: 'można wysłać e-mail' },
+      { label: 'Nie było ich ponad 10 miesięcy', value: back.length, note: 'warto zaprosić', tone: back.length ? 'warn' : '' }
+    ]);
+    P.table(P.$('#go-table'), [
+      { key: 'n', label: 'Gość', html: function (g) { return '<b>' + P.esc(g.n) + '</b><span class="sub">' + P.esc(g.note) + '</span>'; } },
+      { key: 'stays', label: 'Pobyty', num: 1 },
+      { key: 'room', label: 'Ulubiony pokój' },
+      { key: 'last', label: 'Ostatni pobyt', val: function (g) { return +g.last; }, html: function (g) { return P.d(g.last) + '.' + String(g.last.getFullYear()).slice(2) + '<span class="sub">' + P.rel(g.last) + '</span>'; } },
+      { key: 'spent', label: 'Wydali', num: 1, html: function (g) { return P.zl(g.spent); } },
+      { key: 'a', label: '', sort: false, html: function (g) { return !g.consent ? '<span class="muted small">brak zgody na oferty</span>' : g.sent ? P.chip('Oferta wysłana', 'ok') : '<button class="btn sm" data-of="' + REG.indexOf(g) + '">Wyślij ofertę</button>'; } }
+    ], { rows: REG, sortKey: 'stays', sortDir: -1 });
+    P.$$('[data-of]').forEach(function (x) { x.onclick = function () { var g = REG[+x.getAttribute('data-of')]; g.sent = true; P.toast('Oferta wysłana: ' + g.n + ' (pokój ' + g.room + ')'); P.refresh(); }; });
+  };
+  P.$('#go-offer').addEventListener('click', function () { var n = 0; REG.forEach(function (g) { if (g.consent && !g.sent) { g.sent = true; n++; } }); P.toast(n ? 'Oferta wysłana do: ' + P.n(n, 'gość', 'gości', 'gości') + ' ze zgodą na e-maile' : 'Oferta już wysłana'); P.refresh(); });
+
+  P.initTabs();
+})();
+</script>
+</body>
+</html>

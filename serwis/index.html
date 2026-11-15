@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Serwis klimatyzacji i fotowoltaiki – panel demo</title>
+<meta name="description" content="Panel demo dla serwisu klimatyzacji, pomp ciepła i fotowoltaiki: technicy w terenie, przeglądy okresowe, monitoring produkcji PV, umowy i gwarancje, magazyn. Dane przykładowe.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
+<link rel="stylesheet" href="../assets/panel.css">
+<style>
+  /* Szyld jak panel fotowoltaiczny: siatka ogniw, pas od chłodu do słońca */
+  body {
+    --sign-bg: #17304D; --sign-fg: #EEF3F8; --sign-sub: rgba(238, 243, 248, .74);
+    --sign-pattern: linear-gradient(90deg, rgba(255, 255, 255, .09) 1px, transparent 1px), linear-gradient(rgba(255, 255, 255, .09) 1px, transparent 1px);
+    --sign-band: linear-gradient(90deg, #4FB3D9, #9FD0D8 45%, #F2C14E 70%, #E9962F); --sign-band-h: 7px;
+    --accent: #1D659C; --accent-ink: #FFFFFF; --accent-soft: #E2EDF7; --accent-line: #1D659C;
+  }
+  .sign { background-size: 36px 36px, 36px 36px; }
+
+  .crew { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: start; }
+  .route { list-style: none; margin: 0; padding: 0; }
+  .route li { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line-soft); position: relative; }
+  .route li:last-child { border-bottom: 0; }
+  .route .t { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .route .t span { display: block; font-size: 12px; font-weight: 400; color: var(--ink-3); }
+  .route b { display: block; font-size: 14px; }
+  .route .w { font-size: 13px; color: var(--ink-2); }
+  .route .f { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
+  .route li.done { background: var(--surface-2); }
+  .route li.done b, .route li.done .t { color: var(--ink-2); }
+  .route li.now { box-shadow: inset 4px 0 0 var(--accent); }
+  .route li.road { box-shadow: inset 4px 0 0 #C98A12; }
+  @media (max-width: 1050px) { .crew { grid-template-columns: minmax(0, 1fr); } }
+</style>
+</head>
+<body>
+
+<header class="sign">
+  <div class="sign-top">
+    <a href="../index.html">Wszystkie panele</a>
+    <span class="demo-flag">Dane przykładowe</span>
+  </div>
+  <div class="sign-inner">
+    <div>
+      <h1>Twój serwis klimatyzacji i fotowoltaiki</h1>
+      <p class="sign-sub">Technicy w terenie, przeglądy okresowe, produkcja PV, umowy i gwarancje, magazyn</p>
+    </div>
+    <div class="sign-meta"><strong id="sign-day"></strong><span id="sign-sub"></span></div>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="Moduły panelu">
+  <div class="tabs-inner" role="tablist">
+    <button class="tab" data-tab="teren">Dziś w terenie</button>
+    <button class="tab" data-tab="przeglady">Przeglądy okresowe</button>
+    <button class="tab" data-tab="pv">Instalacje PV</button>
+    <button class="tab" data-tab="umowy">Umowy i gwarancje</button>
+    <button class="tab" data-tab="magazyn">Magazyn</button>
+  </div>
+</nav>
+
+<main>
+  <!-- TEREN -->
+  <section data-panel="teren" class="stack">
+    <div id="te-strip"></div>
+    <div class="row-between"><p class="lead">Trasy techników na dziś. Po wizycie technik zamyka zlecenie, a klient dostaje protokół e-mailem.</p><button class="btn primary" id="te-new">Zgłoszenie awarii</button></div>
+    <div class="crew" id="te-crew"></div>
+  </section>
+
+  <!-- PRZEGLĄDY -->
+  <section data-panel="przeglady" class="stack">
+    <div id="pr-strip"></div>
+    <div class="cols">
+      <div class="box">
+        <div class="box-h"><div id="pr-filter"></div><button class="btn sm primary" id="pr-sms">SMS do wszystkich po terminie</button></div>
+        <div class="box-b flush scroll-lg" id="pr-table"></div>
+      </div>
+      <div class="box">
+        <div class="box-h"><h2>Przeglądy w kolejnych miesiącach</h2><p>klimatyzacja i PV</p></div>
+        <div class="box-b"><div id="pr-bars"></div><p class="small muted" style="margin-top:10px">Wiosną przeglądy klimatyzacji kumulują się przed sezonem. Umawiaj je wcześniej, żeby rozłożyć pracę.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PV -->
+  <section data-panel="pv" class="stack">
+    <div id="pv-strip"></div>
+    <div class="cols">
+      <div class="box">
+        <div class="box-h"><h2 id="pv-title"></h2><p>z falowników klientów, którzy udostępnili dane</p></div>
+        <div class="box-b flush" id="pv-table"></div>
+      </div>
+      <div class="stack">
+        <div class="box">
+          <div class="box-h"><h2>Produkcja w stosunku do oczekiwanej</h2><p>kreska: 80%</p></div>
+          <div class="box-b"><div id="pv-bars"></div></div>
+        </div>
+        <div class="box">
+          <div class="box-h"><h2>Jak liczymy oczekiwaną produkcję</h2></div>
+          <div class="box-b"><p class="lead" id="pv-note"></p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- UMOWY -->
+  <section data-panel="umowy" class="stack">
+    <div id="um-strip"></div>
+    <div class="box">
+      <div class="box-h"><h2>Umowy serwisowe</h2><p>przegląd w cenie umowy</p></div>
+      <div class="box-b flush" id="um-table"></div>
+    </div>
+    <div class="box">
+      <div class="box-h"><h2>Gwarancje</h2><p>gwarancja producenta wymaga przeglądu co 12 miesięcy</p></div>
+      <div class="box-b flush scroll-lg" id="um-war"></div>
+    </div>
+  </section>
+
+  <!-- MAGAZYN -->
+  <section data-panel="magazyn" class="stack">
+    <div id="ma-strip"></div>
+    <div class="box">
+      <div class="box-h"><h2>Stany i rezerwacje na montaże</h2><button class="btn sm primary" id="ma-order">Zamów brakujące</button></div>
+      <div class="box-b flush" id="ma-table"></div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <span>Panel demo. Klienci, urządzenia, produkcja i kwoty są wymyślone, zmiany znikają po odświeżeniu strony.</span>
+  <a href="../index.html">Zobacz pozostałe panele</a>
+</footer>
+
+<script src="../assets/panel.js"></script>
+<script>
+(function () {
+  'use strict';
+  var r = P.rng(2207);
+  var TODAY = P.today();
+  var NOW = 12 * 60 + 10;
+  /* typowy uzysk w Polsce, kWh z 1 kWp w miesiącu (przybliżenie, zmień dla swojego regionu) */
+  var YIELD = [25, 40, 75, 110, 130, 135, 135, 120, 85, 55, 25, 18];
+  var MON_LOC = ['styczniu', 'lutym', 'marcu', 'kwietniu', 'maju', 'czerwcu', 'lipcu', 'sierpniu', 'wrześniu', 'październiku', 'listopadzie', 'grudniu'];
+  var MON_GEN = ['stycznia', 'lutego', 'marca', 'kwietnia', 'maja', 'czerwca', 'lipca', 'sierpnia', 'września', 'października', 'listopada', 'grudnia'];
+
+  /* ---------- Dane przykładowe ---------- */
+  var TECH = [
+    { id: 'da', n: 'Damian', role: 'klimatyzacja i pompy ciepła', car: 'Caddy 1' },
+    { id: 'sz', n: 'Szymon', role: 'fotowoltaika, elektryk', car: 'Caddy 2' },
+    { id: 'ek', n: 'Ekipa montażowa', role: 'Łukasz i Kuba', car: 'Transit' }
+  ];
+  /* [technik, od, do, klient, miejscowość, co, awaria, status] */
+  var VIS = [
+    ['da', 8 * 60, 9 * 60, 'Anna Zawadzka', 'Spała', 'Przegląd klimatyzacji, 2 jednostki', 0, 'done'],
+    ['da', 9 * 60 + 30, 11 * 60, 'Jerzy Malec', 'Inowłódz', 'Pompa ciepła powietrze-powietrze nie grzeje', 1, 'done'],
+    ['da', 11 * 60 + 30, 13 * 60 + 30, 'Biuro rachunkowe Bilans', 'Tomaszów Maz.', 'Przegląd klimatyzacji, 4 jednostki', 0, 'now'],
+    ['da', 14 * 60, 15 * 60, 'Ewa Kurek', 'Ujazd', 'Przegląd i odgrzybianie', 0, 'next'],
+    ['da', 15 * 60 + 30, 16 * 60 + 15, 'Michał Pietrzak', 'Lubochnia', 'Wycena montażu, dom 140 m²', 0, 'next'],
+    ['sz', 8 * 60 + 30, 10 * 60, 'Tomasz Gajda', 'Opoczno', 'Przegląd PV 9,8 kWp', 0, 'done'],
+    ['sz', 10 * 60 + 30, 12 * 60, 'Gospodarstwo Sowa', 'Rawa Maz.', 'Falownik zgłasza błąd izolacji', 1, 'done'],
+    ['sz', 12 * 60 + 45, 14 * 60 + 15, 'Barbara Kos', 'Rokiciny', 'Przegląd PV i magazynu energii', 0, 'road'],
+    ['sz', 15 * 60, 16 * 60, 'Piotr Lewicki', 'Tomaszów Maz.', 'Wymiana optymalizatora', 0, 'next'],
+    ['ek', 7 * 60 + 30, 16 * 60, 'Rodzina Banasików', 'Brzeziny', 'Montaż PV 8,2 kWp i magazyn 10 kWh, dzień 2 z 2', 0, 'now']
+  ];
+  var V = VIS.map(function (v, i) { return { id: 'v' + i, t: v[0], from: v[1], to: v[2], cl: v[3], town: v[4], what: v[5], fail: !!v[6], st: v[7], proto: v[7] === 'done' }; });
+  var VST = { done: ['Zrobione', 'ok'], now: ['Na miejscu', 'acc'], road: ['W drodze', 'warn'], next: ['Następne', ''] };
+
+  var TOWNS = ['Tomaszów Maz.', 'Opoczno', 'Rawa Maz.', 'Spała', 'Inowłódz', 'Ujazd', 'Lubochnia', 'Rokiciny', 'Brzeziny', 'Piotrków Tryb.', 'Żelechlinek', 'Czerniewice'];
+  var NAMES = ['Anna Zawadzka', 'Jerzy Malec', 'Ewa Kurek', 'Tomasz Gajda', 'Barbara Kos', 'Piotr Lewicki', 'Krystyna Mazur', 'Marek Bąk', 'Joanna Sobczak', 'Adam Wróblewski', 'Halina Czerwińska', 'Robert Dziedzic',
+    'Gabinet Weterynaryjny Łapa', 'Sklep Spożywczy u Basi', 'Paweł Kaczor', 'Iwona Grzelak', 'Dariusz Pawlak', 'Agata Mróz', 'Hotel Pod Dębami', 'Kamil Jóźwiak', 'Elżbieta Nowak', 'Szkoła Muzyczna Forte', 'Mirosław Kubis', 'Natalia Szewczyk'];
+  var KINDS = [
+    { k: 'ac', n: 'Klimatyzator ścienny 3,5 kW', price: 250 }, { k: 'ac', n: 'Klimatyzacja multi-split, 3 jednostki', price: 450 }, { k: 'hp', n: 'Pompa ciepła powietrze-powietrze', price: 300 },
+    { k: 'pv', n: 'Instalacja PV', price: 350 }, { k: 'pvb', n: 'Instalacja PV z magazynem energii', price: 450 }
+  ];
+  var DEV = NAMES.map(function (n, i) {
+    var kind = KINDS[i % KINDS.length], inst = P.addDays(TODAY, -P.int(r, 200, 1500));
+    var last = P.addDays(TODAY, -P.int(r, 150, 430)), next = new Date(last); next.setFullYear(next.getFullYear() + 1);
+    var war = new Date(inst); war.setFullYear(war.getFullYear() + (kind.k === 'ac' || kind.k === 'hp' ? 5 : 10));
+    var d = { id: 'd' + i, cl: n, town: TOWNS[i % TOWNS.length], kind: kind, inst: inst, last: last, next: next, war: war, appt: null, sms: false };
+    if (kind.k === 'pv' || kind.k === 'pvb') d.kwp = [6.2, 8.2, 9.8, 4.9, 12.4, 7.4, 10.1, 5.6, 14.6, 3.9][i % 10];
+    return d;
+  });
+  DEV.forEach(function (d, i) { if (P.days(TODAY, d.next) >= 0 && P.days(TODAY, d.next) < 40 && i % 2) { d.appt = P.addDays(TODAY, P.int(r, 3, 20)); if (P.isWeekend(d.appt)) d.appt = P.addDays(d.appt, 2); } });
+  /* produkcja PV w poprzednim miesiącu: stosunek do oczekiwanej */
+  var PREV = new Date(TODAY.getFullYear(), TODAY.getMonth() - 1, 1);
+  var RATIO = [0.97, 1.02, 0.63, 0.94, 0, 1.05, 0.74, 0.91, 0.99, 0.88, 1.01, 0.95];
+  var PV = DEV.filter(function (d) { return d.kwp; }).map(function (d, i) {
+    var exp = d.kwp * YIELD[PREV.getMonth()], ratio = RATIO[i % RATIO.length];
+    var note = ratio === 0 ? 'Falownik nie wysyła danych od ' + P.n(9, 'dnia', 'dni', 'dni') : ratio < 0.7 ? 'Jeden string produkuje o połowę mniej, prawdopodobnie zacienienie albo optymalizator' : ratio < 0.8 ? 'Spadek od połowy miesiąca, możliwe zabrudzenie paneli' : '';
+    return { d: d, exp: exp, prod: Math.round(exp * ratio), ratio: ratio, note: note, svc: false };
+  });
+
+  /* umowy serwisowe */
+  var CON = DEV.filter(function (d, i) { return i % 3 !== 2; }).slice(0, 11).map(function (d, i) {
+    var end = P.addDays(TODAY, P.int(r, -10, 300));
+    return { d: d, price: d.kind.price, end: end, renewed: false };
+  });
+  CON[1].end = P.addDays(TODAY, 12); CON[4].end = P.addDays(TODAY, -6);
+  DEV[0].war = P.addDays(TODAY, 45); DEV[6].war = P.addDays(TODAY, 96);
+
+  /* magazyn: [nazwa, stan, jednostka, zarezerwowane na montaże, minimum] */
+  var STOCK = [
+    ['Czynnik R32', 14.5, 'kg', 3, 8], ['Czynnik R410A', 2.4, 'kg', 0, 3], ['Klimatyzator ścienny 2,5 kW, komplet', 3, 'szt.', 2, 2], ['Klimatyzator ścienny 3,5 kW, komplet', 1, 'szt.', 2, 2],
+    ['Rura miedziana 1/4" + 3/8"', 85, 'm', 30, 50], ['Panel PV 450 W', 22, 'szt.', 18, 20], ['Falownik hybrydowy 8 kW', 1, 'szt.', 1, 1], ['Magazyn energii 10 kWh', 0, 'szt.', 1, 1],
+    ['Optymalizator mocy', 6, 'szt.', 1, 5], ['Kabel solarny 6 mm²', 140, 'm', 60, 100], ['Konstrukcja dachowa, komplet na 10 paneli', 2, 'kpl.', 2, 2]
+  ].map(function (s, i) { return { id: 's' + i, n: s[0], stan: s[1], u: s[2], res: s[3], min: s[4], ordered: false }; });
+
+  P.$('#sign-day').textContent = P.dayTitle(TODAY);
+  P.$('#sign-sub').textContent = TECH.length + ' samochody w terenie, ' + DEV.length + ' urządzeń pod opieką';
+
+  /* ---------- DZIŚ W TERENIE ---------- */
+  P.views.teren = function () {
+    var done = V.filter(function (v) { return v.st === 'done'; }), fail = V.filter(function (v) { return v.fail; });
+    var noProto = done.filter(function (v) { return !v.proto; });
+    var late = V.filter(function (v) { return v.st !== 'done' && v.to < NOW; });
+    P.strip(P.$('#te-strip'), [
+      { label: 'Wizyty dziś', value: V.length, note: done.length + ' zrobione, ' + (V.length - done.length) + ' przed nami' },
+      { label: 'Awarie', value: fail.length, note: fail.map(function (v) { return v.town; }).join(', ') || 'brak', tone: fail.some(function (v) { return v.st !== 'done'; }) ? 'bad' : '' },
+      { label: 'Opóźnienia', value: late.length, note: late.length ? 'technik nie zamknął wizyty o czasie' : 'wszyscy na czas', tone: late.length ? 'warn' : 'ok' },
+      { label: 'Protokoły wysłane', value: done.filter(function (v) { return v.proto; }).length + ' z ' + done.length, note: noProto.length ? 'brakuje ' + noProto.length : 'wszystkie po zrobionych wizytach' }
+    ]);
+    P.$('#te-crew').innerHTML = TECH.map(function (t) {
+      var list = V.filter(function (v) { return v.t === t.id; }).sort(function (a, b) { return a.from - b.from; });
+      var km = { da: 118, sz: 142, ek: 64 }[t.id] || 40;
+      return '<div class="box"><div class="box-h"><div><h2>' + t.n + '</h2><p>' + t.role + ', ' + t.car + '</p></div><span class="small muted">' + P.n(list.length, 'wizyta', 'wizyty', 'wizyt') + ', ok. ' + km + ' km</span></div><ul class="route">' + list.map(function (v) {
+        return '<li class="' + v.st + '"><div class="t">' + P.hm(v.from) + '<span>do ' + P.hm(v.to) + '</span></div><div><b>' + P.esc(v.cl) + ', ' + P.esc(v.town) + '</b><div class="w">' + P.esc(v.what) + '</div>' +
+          '<div class="f">' + P.chip(VST[v.st][0], VST[v.st][1]) + (v.fail ? P.chip('Awaria', 'bad') : '') + (v.st === 'done' ? (v.proto ? P.chip('Protokół wysłany', 'info') : '') : '<button class="btn sm" data-fin="' + v.id + '">Zakończ wizytę</button>') + '</div></div></li>';
+      }).join('') + '</ul></div>';
+    }).join('');
+    P.$$('[data-fin]').forEach(function (b) { b.onclick = function () { finish(V.filter(function (v) { return v.id === b.getAttribute('data-fin'); })[0]); }; });
+  };
+  function finish(v) {
+    var body = '<dl class="kv"><dt>Klient</dt><dd>' + P.esc(v.cl) + ', ' + P.esc(v.town) + '</dd><dt>Zlecenie</dt><dd>' + P.esc(v.what) + '</dd></dl>' +
+      '<div class="form-grid" style="margin-top:14px"><label class="field full"><span>Co zrobiono</span><input id="fi-w" value="' + (v.what.indexOf('Przegląd') === 0 ? 'Czyszczenie filtrów i wymienników, kontrola szczelności i ciśnień, test pracy' : '') + '"></label>' +
+      '<label class="field"><span>Czas pracy, h</span><input id="fi-h" type="number" min="0.5" step="0.5" value="' + ((v.to - v.from) / 60) + '"></label>' +
+      '<label class="field"><span>Następny przegląd</span><select id="fi-n"><option value="12">za 12 miesięcy</option><option value="6">za 6 miesięcy</option><option value="0">nie dotyczy</option></select></label>' +
+      '<p class="full small" id="fi-err" style="color:var(--bad)"></p></div>';
+    P.modal({ title: 'Zakończ wizytę', sub: P.hm(v.from) + '–' + P.hm(v.to), body: body, actions: [
+      { label: 'Anuluj', ghost: true },
+      { label: 'Zakończ i wyślij protokół', primary: true, onClick: function (close, d) {
+        if (!P.$('#fi-w', d).value.trim()) { P.$('#fi-err', d).textContent = 'Wpisz, co zostało zrobione. To trafi do protokołu dla klienta.'; return; }
+        v.st = 'done'; v.proto = true;
+        var nx = V.filter(function (x) { return x.t === v.t && x.st === 'next'; }).sort(function (a, b) { return a.from - b.from; })[0];
+        if (nx && !V.some(function (x) { return x.t === v.t && (x.st === 'road' || x.st === 'now'); })) nx.st = 'road';
+        close(); P.toast('Protokół wysłany: ' + v.cl + (nx ? '. Następna wizyta: ' + nx.town + ' ' + P.hm(nx.from) : '')); P.refresh();
+      } }
+    ] });
+  }
+  P.$('#te-new').addEventListener('click', function () {
+    var body = '<div class="form-grid"><label class="field"><span>Klient</span><input id="aw-c" placeholder="Imię i nazwisko albo firma"></label>' +
+      '<label class="field"><span>Miejscowość</span><select id="aw-t">' + P.options(TOWNS.map(function (t) { return { v: t, l: t }; }), 'Tomaszów Maz.') + '</select></label>' +
+      '<label class="field full"><span>Co się dzieje</span><input id="aw-w" placeholder="Np. klimatyzacja wyłącza się z błędem E5"></label>' +
+      '<label class="field"><span>Technik</span><select id="aw-k">' + P.options(TECH.slice(0, 2).map(function (t) { return { v: t.id, l: t.n }; }), 'da') + '</select></label>' +
+      '<p class="full small" id="aw-err" style="color:var(--bad)"></p></div>';
+    P.modal({ title: 'Zgłoszenie awarii', sub: 'Dopiszemy wizytę na koniec dzisiejszej trasy technika', body: body, actions: [
+      { label: 'Anuluj', ghost: true },
+      { label: 'Dodaj do trasy', primary: true, onClick: function (close, d) {
+        var c = P.$('#aw-c', d).value.trim(), w = P.$('#aw-w', d).value.trim();
+        if (!c || !w) { P.$('#aw-err', d).textContent = 'Wpisz klienta i opis usterki.'; return; }
+        var t = P.$('#aw-k', d).value, last = V.filter(function (v) { return v.t === t; }).reduce(function (m, v) { return Math.max(m, v.to); }, NOW);
+        var from = Math.ceil((last + 30) / 15) * 15;
+        V.push({ id: 'v' + V.length, t: t, from: from, to: from + 60, cl: c, town: P.$('#aw-t', d).value, what: w, fail: true, st: 'next', proto: false });
+        close(); P.toast('Awaria dodana: ' + TECH.filter(function (x) { return x.id === t; })[0].n + ', ' + P.hm(from) + '. Klient dostanie SMS z godziną'); P.refresh();
+      } }
+    ] });
+  });
+
+  /* ---------- PRZEGLĄDY ---------- */
+  var prF = 'todo';
+  function dState(d) { var n = P.days(TODAY, d.next); return d.appt ? 2 : n < 0 ? 0 : n <= 30 ? 1 : 3; }
+  P.views.przeglady = function () {
+    var late = DEV.filter(function (d) { return dState(d) === 0; }), soon = DEV.filter(function (d) { return dState(d) === 1; }), appt = DEV.filter(function (d) { return d.appt; });
+    var warRisk = late.filter(function (d) { return d.war > TODAY; });
+    P.strip(P.$('#pr-strip'), [
+      { label: 'Po terminie', value: late.length, note: late.filter(function (d) { return d.sms; }).length + ' dostało SMS', tone: late.length ? 'bad' : 'ok' },
+      { label: 'W ciągu 30 dni', value: soon.length, note: 'do umówienia' , tone: soon.length ? 'warn' : '' },
+      { label: 'Umówione', value: appt.length, note: 'w kalendarzu techników' },
+      { label: 'Gwarancja zagrożona', value: warRisk.length, note: 'przegląd po terminie przy ważnej gwarancji', tone: warRisk.length ? 'bad' : 'ok' }
+    ]);
+    P.seg(P.$('#pr-filter'), [{ v: 'todo', l: 'Do umówienia' }, { v: 'all', l: 'Wszystkie urządzenia' }], prF, function (v) { prF = v; P.views.przeglady(); });
+    var rows = DEV.filter(function (d) { return prF === 'all' || dState(d) < 2; });
+    P.table(P.$('#pr-table'), [
+      { key: 'cl', label: 'Klient', html: function (d) { return '<b>' + P.esc(d.cl) + '</b><span class="sub">' + P.esc(d.town) + '</span>'; } },
+      { key: 'kind', label: 'Urządzenie', val: function (d) { return d.kind.n; }, html: function (d) { return P.esc(d.kind.n) + (d.kwp ? ' ' + P.num(d.kwp, 1) + ' kWp' : '') + '<span class="sub">montaż ' + P.d(d.inst) + '.' + String(d.inst.getFullYear()).slice(2) + '</span>'; } },
+      { key: 'next', label: 'Przegląd', val: function (d) { return +d.next; }, html: function (d) { return P.d(d.next) + '.' + String(d.next.getFullYear()).slice(2) + '<span class="sub">' + P.rel(d.next) + '</span>'; } },
+      { key: 'st', label: 'Status', val: dState, html: function (d) { var s = dState(d); return [P.chip('Po terminie', 'bad'), P.chip('Wkrótce', 'warn'), P.chip('Umówiony ' + (d.appt ? P.d(d.appt) : ''), 'info'), P.chip('W porządku', 'ok')][s] + (s === 0 && d.war > TODAY ? ' ' + P.chip('gwarancja', 'bad') : ''); } },
+      { key: 'a', label: '', sort: false, html: function (d) { return dState(d) < 2 ? '<button class="btn sm" data-ap="' + d.id + '">' + (d.sms ? 'Umów termin' : 'SMS z terminem') + '</button>' : ''; } }
+    ], { rows: rows, sortKey: 'st', empty: 'Wszystkie przeglądy umówione.' });
+    P.$$('[data-ap]').forEach(function (b) { b.onclick = function () {
+      var d = DEV.filter(function (x) { return x.id === b.getAttribute('data-ap'); })[0];
+      if (!d.sms) { d.sms = true; P.toast('SMS z propozycją terminu wysłany: ' + d.cl); }
+      else { d.appt = P.addDays(TODAY, 7); if (P.isWeekend(d.appt)) d.appt = P.addDays(d.appt, 2); P.toast('Umówiono: ' + d.cl + ', ' + P.dowS(d.appt) + ' ' + P.d(d.appt)); }
+      P.refresh(); }; });
+    var months = []; for (var i = 0; i < 6; i++) months.push(new Date(TODAY.getFullYear(), TODAY.getMonth() + i, 1));
+    var base = [6, 5, 4, 7, 9, 16, 22, 19, 11, 8, 7, 6];
+    P.bars(P.$('#pr-bars'), months.map(function (m, i) {
+      var own = DEV.filter(function (d) { return d.next.getMonth() === m.getMonth() && d.next.getFullYear() === m.getFullYear(); }).length;
+      var n = own + base[m.getMonth()];
+      return { label: P.MON[m.getMonth()], value: n, text: P.n(n, 'przegląd', 'przeglądy', 'przeglądów'), tone: n > 18 ? 'warn' : '' };
+    }));
+  };
+  P.$('#pr-sms').addEventListener('click', function () { var n = 0; DEV.forEach(function (d) { if (dState(d) === 0 && !d.sms) { d.sms = true; n++; } }); P.toast(n ? 'SMS z propozycją terminu wysłany do: ' + P.n(n, 'klient', 'klientów', 'klientów') : 'Wszyscy po terminie dostali już SMS'); P.refresh(); });
+
+  /* ---------- INSTALACJE PV ---------- */
+  P.views.pv = function () {
+    var low = PV.filter(function (p) { return p.ratio > 0 && p.ratio < 0.8; }), off = PV.filter(function (p) { return p.ratio === 0; });
+    var kwp = PV.reduce(function (s, p) { return s + p.d.kwp; }, 0), prod = PV.reduce(function (s, p) { return s + p.prod; }, 0), exp = PV.reduce(function (s, p) { return s + p.exp; }, 0);
+    P.strip(P.$('#pv-strip'), [
+      { label: 'Instalacje pod opieką', value: PV.length, note: P.num(kwp, 1) + ' kWp łącznie' },
+      { label: 'Produkcja w ' + MON_LOC[PREV.getMonth()], value: P.num(prod) + ' kWh', note: P.num(prod / exp * 100) + '% oczekiwanej' },
+      { label: 'Poniżej 80%', value: low.length, note: low.map(function (p) { return p.d.cl; }).join(', ') || 'brak', tone: low.length ? 'warn' : 'ok' },
+      { label: 'Brak danych', value: off.length, note: off.length ? 'falownik offline, sprawdź internet u klienta' : 'wszystkie online', tone: off.length ? 'bad' : 'ok' }
+    ]);
+    P.$('#pv-title').textContent = 'Produkcja za ' + P.MON[PREV.getMonth()] + ' ' + PREV.getFullYear();
+    P.table(P.$('#pv-table'), [
+      { key: 'cl', label: 'Klient', val: function (p) { return p.d.cl; }, html: function (p) { return '<b>' + P.esc(p.d.cl) + '</b><span class="sub">' + P.esc(p.d.town) + ', ' + P.num(p.d.kwp, 1) + ' kWp' + (p.d.kind.k === 'pvb' ? ', z magazynem' : '') + '</span>'; } },
+      { key: 'prod', label: 'Produkcja', num: 1, html: function (p) { return p.ratio ? P.num(p.prod) + ' kWh<span class="sub">oczekiwana ' + P.num(p.exp) + '</span>' : '<span class="muted">brak danych</span>'; } },
+      { key: 'ratio', label: 'Wynik', num: 1, html: function (p) { return p.ratio ? P.num(p.ratio * 100) + '%' : '—'; } },
+      { key: 'st', label: 'Ocena', val: function (p) { return p.ratio === 0 ? -1 : p.ratio; }, html: function (p) { return (p.ratio === 0 ? P.chip('Falownik offline', 'bad') : p.ratio < 0.8 ? P.chip('Za mało', 'warn') : P.chip('W normie', 'ok')) + (p.note ? '<span class="sub" style="white-space:normal;max-width:300px">' + P.esc(p.note) + '</span>' : ''); } },
+      { key: 'a', label: '', sort: false, html: function (p) { return p.ratio < 0.8 ? (p.svc ? P.chip('Serwis umówiony', 'info') : '<button class="btn sm" data-pv="' + p.d.id + '">' + (p.ratio === 0 ? 'Zadzwoń do klienta' : 'Umów serwis') + '</button>') : ''; } }
+    ], { rows: PV, sortKey: 'st' });
+    P.$$('[data-pv]').forEach(function (b) { b.onclick = function () { var p = PV.filter(function (x) { return x.d.id === b.getAttribute('data-pv'); })[0]; p.svc = true; P.toast(p.ratio === 0 ? 'Dodano zadanie: zadzwonić do ' + p.d.cl + ' w sprawie falownika' : 'Serwis umówiony: ' + p.d.cl + ', przyjedzie Szymon'); P.refresh(); }; });
+    P.bars(P.$('#pv-bars'), PV.slice().sort(function (a, b) { return a.ratio - b.ratio; }).map(function (p) { return { label: p.d.cl, value: p.ratio * 100, text: p.ratio ? P.num(p.ratio * 100) + '%' : 'brak', tone: p.ratio < 0.8 ? (p.ratio === 0 ? 'bad' : 'warn') : 'ok', mark: 80 / 120 * 100 }; }), { max: 120 });
+    P.$('#pv-note').innerHTML = 'Moc instalacji razy typowy uzysk w danym miesiącu. Dla ' + MON_GEN[PREV.getMonth()] + ' przyjmujemy <b>' + YIELD[PREV.getMonth()] + ' kWh z 1 kWp</b>. Wynik poniżej 80% zwykle oznacza zacienienie, brud, uszkodzony optymalizator albo string. Uzyski dla miesięcy zmienisz w jednym miejscu w pliku.';
+  };
+
+  /* ---------- UMOWY I GWARANCJE ---------- */
+  P.views.umowy = function () {
+    var active = CON.filter(function (c) { return c.end >= TODAY || c.renewed; }), soon = CON.filter(function (c) { return !c.renewed && P.days(TODAY, c.end) <= 30; });
+    var warEnd = DEV.filter(function (d) { var n = P.days(TODAY, d.war); return n >= 0 && n <= 120; });
+    var noCon = DEV.filter(function (d) { return !CON.some(function (c) { return c.d === d; }); });
+    P.strip(P.$('#um-strip'), [
+      { label: 'Umowy aktywne', value: active.length, note: P.zl(active.reduce(function (s, c) { return s + c.price; }, 0)) + ' rocznie' },
+      { label: 'Do odnowienia w 30 dni', value: soon.length, note: soon.length ? 'albo już wygasły' : 'brak', tone: soon.length ? 'warn' : 'ok' },
+      { label: 'Gwarancja kończy się w 120 dni', value: warEnd.length, note: 'dobry moment na propozycję umowy' },
+      { label: 'Urządzenia bez umowy', value: noCon.length, note: P.zl(noCon.reduce(function (s, d) { return s + d.kind.price; }, 0)) + ' rocznie do zdobycia' }
+    ]);
+    P.table(P.$('#um-table'), [
+      { key: 'cl', label: 'Klient', val: function (c) { return c.d.cl; }, html: function (c) { return '<b>' + P.esc(c.d.cl) + '</b><span class="sub">' + P.esc(c.d.town) + '</span>'; } },
+      { key: 'kind', label: 'Urządzenie', val: function (c) { return c.d.kind.n; }, html: function (c) { return P.esc(c.d.kind.n); } },
+      { key: 'price', label: 'Cena roczna', num: 1, html: function (c) { return P.zl(c.price); } },
+      { key: 'end', label: 'Ważna do', val: function (c) { return c.renewed ? 9e15 : +c.end; }, html: function (c) { var e = c.renewed ? new Date(c.end.getFullYear() + 1, c.end.getMonth(), c.end.getDate()) : c.end; return P.d(e) + '.' + String(e.getFullYear()).slice(2) + '<span class="sub">' + P.rel(e) + '</span>'; } },
+      { key: 'st', label: 'Status', val: function (c) { return c.renewed ? 3 : (c.end < TODAY ? 0 : P.days(TODAY, c.end) <= 30 ? 1 : 2); }, html: function (c) { return c.renewed ? P.chip('Odnowiona', 'ok') : c.end < TODAY ? P.chip('Wygasła', 'bad') : P.days(TODAY, c.end) <= 30 ? P.chip('Do odnowienia', 'warn') : P.chip('Aktywna', 'ok'); } },
+      { key: 'a', label: '', sort: false, html: function (c) { return !c.renewed && P.days(TODAY, c.end) <= 30 ? '<button class="btn sm" data-rn="' + c.d.id + '">Wyślij odnowienie</button>' : ''; } }
+    ], { rows: CON, sortKey: 'st' });
+    P.$$('[data-rn]').forEach(function (b) { b.onclick = function () { var c = CON.filter(function (x) { return x.d.id === b.getAttribute('data-rn'); })[0]; c.renewed = true; P.toast('Umowa odnowiona na rok: ' + c.d.cl + ', ' + P.zl(c.price)); P.refresh(); }; });
+    P.table(P.$('#um-war'), [
+      { key: 'cl', label: 'Klient', val: function (d) { return d.cl; }, html: function (d) { return '<b>' + P.esc(d.cl) + '</b><span class="sub">' + P.esc(d.kind.n) + '</span>'; } },
+      { key: 'war', label: 'Gwarancja do', val: function (d) { return +d.war; }, html: function (d) { return P.d(d.war) + '.' + String(d.war.getFullYear()).slice(2) + '<span class="sub">' + P.rel(d.war) + '</span>'; } },
+      { key: 'last', label: 'Ostatni przegląd', val: function (d) { return +d.last; }, html: function (d) { return P.d(d.last) + '.' + String(d.last.getFullYear()).slice(2); } },
+      { key: 'st', label: 'Gwarancja', val: function (d) { return d.war < TODAY ? 3 : d.next < TODAY ? 0 : P.days(TODAY, d.war) <= 120 ? 1 : 2; }, html: function (d) { return d.war < TODAY ? P.chip('Wygasła', '') : d.next < TODAY ? P.chip('Zagrożona: brak przeglądu', 'bad') : P.days(TODAY, d.war) <= 120 ? P.chip('Kończy się', 'warn') : P.chip('Ważna', 'ok'); } }
+    ], { rows: DEV, sortKey: 'st' });
+  };
+
+  /* ---------- MAGAZYN ---------- */
+  function free(s) { return s.stan - s.res; }
+  P.views.magazyn = function () {
+    var short = STOCK.filter(function (s) { return free(s) < 0 && !s.ordered; }), low = STOCK.filter(function (s) { return free(s) >= 0 && s.stan < s.min && !s.ordered; });
+    P.strip(P.$('#ma-strip'), [
+      { label: 'Brakuje do montaży', value: short.length, note: short.map(function (s) { return s.n.split(', ')[0]; }).join(', ') || 'wszystko jest', tone: short.length ? 'bad' : 'ok' },
+      { label: 'Poniżej minimum', value: low.length, note: low.map(function (s) { return s.n.split(', ')[0]; }).slice(0, 2).join(', ') || 'brak', tone: low.length ? 'warn' : 'ok' },
+      { label: 'Czynnik R32', value: P.num(free(STOCK[0]), 1) + ' kg', note: 'wolne, ' + STOCK[0].res + ' kg na montaże' },
+      { label: 'W zamówieniu', value: STOCK.filter(function (s) { return s.ordered; }).length, note: 'pozycje zamówione u hurtownika' }
+    ]);
+    P.table(P.$('#ma-table'), [
+      { key: 'n', label: 'Pozycja' },
+      { key: 'stan', label: 'Stan', num: 1, html: function (s) { return P.num(s.stan, s.stan % 1 ? 1 : 0) + ' ' + s.u; } },
+      { key: 'res', label: 'Na montaże', num: 1, html: function (s) { return s.res ? s.res + ' ' + s.u : '<span class="muted">—</span>'; } },
+      { key: 'free', label: 'Wolne', num: 1, val: free, html: function (s) { var f = free(s); return '<b' + (f < 0 ? ' style="color:var(--bad)"' : '') + '>' + P.num(f, f % 1 ? 1 : 0) + ' ' + s.u + '</b><span class="sub">min. ' + s.min + '</span>'; } },
+      { key: 'st', label: 'Status', val: function (s) { return s.ordered ? 3 : free(s) < 0 ? 0 : s.stan < s.min ? 1 : 2; }, html: function (s) { return s.ordered ? P.chip('Zamówione', 'info') : free(s) < 0 ? P.chip('Brakuje do montażu', 'bad') : s.stan < s.min ? P.chip('Poniżej minimum', 'warn') : P.chip('W porządku', 'ok'); } }
+    ], { rows: STOCK, sortKey: 'st' });
+  };
+  P.$('#ma-order').addEventListener('click', function () { var n = STOCK.filter(function (s) { return !s.ordered && (free(s) < 0 || s.stan < s.min); }); n.forEach(function (s) { s.ordered = true; }); P.toast(n.length ? 'Zamówiono u hurtownika: ' + P.n(n.length, 'pozycja', 'pozycje', 'pozycji') : 'Nic nie trzeba zamawiać'); P.refresh(); });
+
+  P.initTabs();
+})();
+</script>
+</body>
+</html>

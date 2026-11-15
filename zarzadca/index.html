@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zarządca nieruchomości – panel demo</title>
+<meta name="description" content="Panel demo dla zarządcy nieruchomości i wspólnot mieszkaniowych: zgłoszenia usterek, budynki i fundusz remontowy, zaległości w opłatach, przeglądy budynków, uchwały i głosowanie udziałami. Dane przykładowe.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
+<link rel="stylesheet" href="../assets/panel.css">
+<style>
+  /* Szyld jak elewacja bloku: rzędy okien */
+  body {
+    --sign-bg: #24343C; --sign-fg: #EEF2F3; --sign-sub: rgba(238, 242, 243, .74);
+    --sign-pattern: linear-gradient(to bottom, #24343C 0 12px, transparent 12px 32px, #24343C 32px), linear-gradient(90deg, transparent 0 16px, rgba(255, 255, 255, .075) 16px 32px, transparent 32px);
+    --sign-band: linear-gradient(#B9C3C7, #8D9AA0); --sign-band-h: 7px;
+    --accent: #2B6878; --accent-ink: #FFFFFF; --accent-soft: #E1EEF1; --accent-line: #2B6878;
+  }
+  .sign { background-size: 100% 44px, 44px 100%; }
+
+  .bld { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  .bcard { appearance: none; font: inherit; color: var(--ink); text-align: left; cursor: pointer; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-box); overflow: hidden; display: flex; flex-direction: column; padding: 0; }
+  .bcard:hover { border-color: var(--accent-line); }
+  .bcard-h { background: #2F434C; color: #EEF2F3; padding: 12px 14px; background-image: linear-gradient(to bottom, #2F434C 0 8px, transparent 8px 20px, #2F434C 20px), linear-gradient(90deg, transparent 0 10px, rgba(255, 255, 255, .08) 10px 18px, transparent 18px); background-size: 100% 26px, 26px 100%; }
+  .bcard-h b { display: block; font-size: 16px; font-weight: 700; }
+  .bcard-h span { font-size: 12.5px; color: rgba(238, 242, 243, .78); }
+  .bcard-b { padding: 12px 14px 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+  .bcard-b div { font-size: 12.5px; color: var(--ink-3); }
+  .bcard-b b { display: block; font-size: 16px; color: var(--ink); font-weight: 680; font-variant-numeric: tabular-nums; }
+  .bcard-b b.bad { color: var(--bad); } .bcard-b b.warn { color: var(--warn); }
+  .vote { position: relative; height: 22px; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--line); overflow: hidden; display: flex; min-width: 220px; }
+  .vote .y { background: var(--ok); } .vote .n { background: #B5483D; }
+  .vote .half { position: absolute; left: 50%; top: -2px; bottom: -2px; border-left: 2px dashed var(--ink); }
+  @media (max-width: 1000px) { .bld { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 600px) { .bld { grid-template-columns: minmax(0, 1fr); } }
+</style>
+</head>
+<body>
+
+<header class="sign">
+  <div class="sign-top">
+    <a href="../index.html">Wszystkie panele</a>
+    <span class="demo-flag">Dane przykładowe</span>
+  </div>
+  <div class="sign-inner">
+    <div>
+      <h1>Twoje zarządzanie nieruchomościami</h1>
+      <p class="sign-sub">Usterki, budynki i fundusz remontowy, zaległości, przeglądy, uchwały</p>
+    </div>
+    <div class="sign-meta"><strong id="sign-day"></strong><span id="sign-sub"></span></div>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="Moduły panelu">
+  <div class="tabs-inner" role="tablist">
+    <button class="tab" data-tab="zgloszenia">Zgłoszenia usterek</button>
+    <button class="tab" data-tab="budynki">Budynki</button>
+    <button class="tab" data-tab="oplaty">Opłaty i zaległości</button>
+    <button class="tab" data-tab="przeglady">Przeglądy</button>
+    <button class="tab" data-tab="uchwaly">Uchwały</button>
+  </div>
+</nav>
+
+<main>
+  <!-- ZGŁOSZENIA -->
+  <section data-panel="zgloszenia" class="stack">
+    <div id="zg-strip"></div>
+    <div class="box">
+      <div class="box-h"><div id="zg-filter"></div><button class="btn sm primary" id="zg-new">Nowe zgłoszenie</button></div>
+      <div class="box-b flush scroll-lg" id="zg-table"></div>
+    </div>
+  </section>
+
+  <!-- BUDYNKI -->
+  <section data-panel="budynki" class="stack">
+    <div id="bu-strip"></div>
+    <div class="bld" id="bu-cards"></div>
+    <div class="box">
+      <div class="box-h"><h2>Plan remontów</h2><p>z uchwał i przeglądów</p></div>
+      <div class="box-b flush" id="bu-plan"></div>
+    </div>
+  </section>
+
+  <!-- OPŁATY -->
+  <section data-panel="oplaty" class="stack">
+    <div id="op-strip"></div>
+    <div class="cols">
+      <div class="box">
+        <div class="box-h"><h2>Lokale z zaległościami</h2><button class="btn sm" id="op-all">Upomnienie do wszystkich z 1–2 miesiącami</button></div>
+        <div class="box-b flush scroll-lg" id="op-table"></div>
+      </div>
+      <div class="box">
+        <div class="box-h"><h2>Zaległości według budynków</h2></div>
+        <div class="box-b"><div id="op-bars"></div><p class="small muted" style="margin-top:10px">Kolejne kroki: upomnienie, wezwanie przedsądowe, sprawa w sądzie. O pozwie decyduje zarząd wspólnoty.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRZEGLĄDY -->
+  <section data-panel="przeglady" class="stack">
+    <div id="pr-strip"></div>
+    <div class="box">
+      <div class="box-h"><div id="pr-filter"></div><p>Terminy wpisane z protokołów poprzednich przeglądów</p></div>
+      <div class="box-b flush scroll-lg" id="pr-table"></div>
+    </div>
+  </section>
+
+  <!-- UCHWAŁY -->
+  <section data-panel="uchwaly" class="stack">
+    <div id="uc-strip"></div>
+    <div class="box">
+      <div class="box-h"><h2>Głosowania</h2><p>liczy się większość udziałów, przerywana kreska: 50%</p></div>
+      <div class="box-b flush" id="uc-table"></div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <span>Panel demo. Wspólnoty, adresy, lokatorzy i kwoty są wymyślone, zmiany znikają po odświeżeniu strony.</span>
+  <a href="../index.html">Zobacz pozostałe panele</a>
+</footer>
+
+<script src="../assets/panel.js"></script>
+<script>
+(function () {
+  'use strict';
+  var r = P.rng(9031);
+  var TODAY = P.today();
+
+  /* ---------- Dane przykładowe ---------- */
+  var B = [
+    { id: 'b1', n: 'Lipowa 12', full: 'Wspólnota Mieszkaniowa Lipowa 12', lok: 48, year: 1978, lift: 1, fund: 186400, rate: 2.2, m2: 2650, gas: 1, play: 1 },
+    { id: 'b2', n: 'Słoneczna 3', full: 'Wspólnota Mieszkaniowa Słoneczna 3', lok: 24, year: 1995, lift: 0, fund: 64200, rate: 1.8, m2: 1320, gas: 1, play: 0 },
+    { id: 'b3', n: 'Ogrodowa 7A–7C', full: 'Wspólnota Mieszkaniowa Ogrodowa 7', lok: 72, year: 2008, lift: 3, fund: 312900, rate: 1.6, m2: 4380, gas: 0, play: 1 },
+    { id: 'b4', n: 'Kościuszki 41', full: 'Wspólnota Mieszkaniowa Kościuszki 41', lok: 14, year: 1912, lift: 0, fund: 23800, rate: 2.5, m2: 980, gas: 1, play: 0 },
+    { id: 'b5', n: 'Nad Pilicą, budynek B', full: 'Wspólnota Mieszkaniowa Nad Pilicą B', lok: 36, year: 2019, lift: 1, fund: 98500, rate: 1.4, m2: 2050, gas: 0, play: 1 },
+    { id: 'b6', n: 'Polna 18', full: 'Wspólnota Mieszkaniowa Polna 18', lok: 30, year: 1985, lift: 0, fund: 121000, rate: 2, m2: 1710, gas: 1, play: 0 }
+  ];
+  var BL = {}; B.forEach(function (b) { BL[b.id] = b; });
+  var PRO = [
+    { id: 'hyd', n: 'Hydro-Serwis', t: 'hydraulika' }, { id: 'ele', n: 'Elektro-Bud', t: 'elektryka' }, { id: 'win', n: 'Dźwig-Serwis', t: 'windy' },
+    { id: 'dek', n: 'Dekarstwo Nowak', t: 'dachy' }, { id: 'dom', n: 'Domofony 24', t: 'domofony i bramy' }, { id: 'czy', n: 'Czysty Dom', t: 'sprzątanie i zieleń' }
+  ];
+  var PR = {}; PRO.forEach(function (p) { PR[p.id] = p; });
+  var CAT = { hyd: 'Hydraulika', ele: 'Elektryka', win: 'Winda', dek: 'Dach', dom: 'Domofon, brama', czy: 'Porządek, zieleń' };
+  var PRIO = { a: ['Awaria', 'bad'], p: ['Pilne', 'warn'], z: ['Zwykłe', ''] };
+  var STS = { nowe: ['Nowe', 'info'], przyp: ['Fachowiec przypisany', ''], real: ['W realizacji', 'acc'], zamk: ['Zamknięte', 'ok'] };
+  /* [budynek, lokal/miejsce, opis, kategoria, priorytet, godzin temu, status, fachowiec, zgłaszający] */
+  var ZS = [
+    ['b1', 'piwnica', 'Przeciek z pionu wodnego w piwnicy', 'hyd', 'a', 2, 'nowe', null, 'lok. 3'],
+    ['b3', 'klatka 7B', 'Winda stoi na 4. piętrze', 'win', 'a', 5, 'real', 'win', 'lok. 7B/18'],
+    ['b4', 'lok. 12', 'Zacieki na suficie ostatniego piętra po deszczu', 'dek', 'p', 30, 'przyp', 'dek', 'lok. 12'],
+    ['b2', 'klatka I', 'Domofon nie otwiera drzwi wejściowych', 'dom', 'p', 20, 'nowe', null, 'lok. 8'],
+    ['b3', 'garaż', 'Brama garażu nie domyka się', 'dom', 'p', 48, 'przyp', 'dom', 'lok. 7A/2'],
+    ['b6', 'klatka II', 'Nie świeci oświetlenie na 2. piętrze', 'ele', 'z', 70, 'przyp', 'ele', 'lok. 21'],
+    ['b1', 'teren', 'Przewrócony kosz na śmieci przy placu zabaw', 'czy', 'z', 26, 'nowe', null, 'lok. 30'],
+    ['b5', 'lok. 22', 'Słaby ciąg w kratce wentylacyjnej w łazience', 'hyd', 'z', 120, 'nowe', null, 'lok. 22'],
+    ['b6', 'piwnica', 'Zapchana kanalizacja w pionie piwnicznym', 'hyd', 'p', 9, 'real', 'hyd', 'lok. 1'],
+    ['b4', 'elewacja', 'Odpadający tynk nad wejściem', 'dek', 'p', 160, 'przyp', 'dek', 'zarząd'],
+    ['b3', 'klatka 7C', 'Graffiti na drzwiach wejściowych', 'czy', 'z', 200, 'zamk', 'czy', 'lok. 7C/5'],
+    ['b2', 'dach', 'Obluzowana obróbka blacharska komina', 'dek', 'p', 310, 'zamk', 'dek', 'zarząd'],
+    ['b1', 'klatka III', 'Cieknący zawór przy liczniku wody', 'hyd', 'z', 260, 'zamk', 'hyd', 'lok. 41'],
+    ['b5', 'teren', 'Uszkodzony szlaban wjazdowy', 'dom', 'p', 400, 'zamk', 'dom', 'zarząd']
+  ];
+  var ZG = ZS.map(function (z, i) {
+    var at = new Date(Date.now() - z[5] * 3600000);
+    return { id: 'g' + i, nr: 'U/' + (TODAY.getMonth() + 1) + '/' + (140 + i), b: z[0], where: z[1], txt: z[2], cat: z[3], prio: z[4], at: at, h: z[5], st: z[6], pro: z[7], who: z[8], closeH: z[6] === 'zamk' ? P.int(r, 6, 70) : null };
+  });
+
+  /* zaległości: [budynek, lokal, właściciel, miesięcy, opłata miesięczna, krok] */
+  var ARR = [
+    ['b1', '14', 'Stanisław K.', 7, 620, 'pozew'], ['b1', '27', 'Agnieszka W.', 2, 540, 'upom'], ['b1', '45', 'Robert D.', 1, 610, null],
+    ['b2', '5', 'Marianna S.', 3, 480, 'wezw'], ['b3', '7A/11', 'Kamil P.', 1, 720, null], ['b3', '7B/3', 'Joanna M.', 4, 690, 'wezw'],
+    ['b3', '7C/20', 'Tomasz B.', 2, 750, 'upom'], ['b4', '2', 'Helena O.', 5, 410, 'wezw'], ['b5', '9', 'Mateusz R.', 1, 560, null],
+    ['b6', '17', 'Zdzisław G.', 2, 520, null], ['b6', '28', 'Dorota F.', 1, 495, null]
+  ].map(function (a, i) { return { id: 'a' + i, b: a[0], lok: a[1], own: a[2], mon: a[3], fee: a[4], amt: a[3] * a[4] + (a[3] > 2 ? Math.round(a[3] * a[4] * 0.02) : 0), step: a[5], last: P.addDays(TODAY, -a[3] * 30 - P.int(r, 2, 20)) }; });
+  var STEP = { upom: ['Upomnienie wysłane', 'info'], wezw: ['Wezwanie przedsądowe', 'warn'], pozew: ['Sprawa w sądzie', 'bad'] };
+
+  /* przeglądy: termin = ostatni + okres */
+  var INS = [];
+  function ins(b, n, months, lastDays, who) { var last = P.addDays(TODAY, -lastDays); var next = new Date(last); next.setMonth(next.getMonth() + months); INS.push({ id: 'i' + INS.length, b: b, n: n, months: months, last: last, next: next, who: who, ordered: false }); }
+  ins('b1', 'Roczny: instalacja gazowa', 12, 352, 'Gaz-Kontrol'); ins('b1', 'Roczny: przewody kominowe', 12, 340, 'Zakład Kominiarski'); ins('b1', 'Pięcioletni: budynek i instalacja elektryczna', 60, 1790, 'inż. budownictwa');
+  ins('b1', 'Winda: badanie okresowe UDT', 12, 300, 'Dźwig-Serwis'); ins('b1', 'Plac zabaw: przegląd roczny', 12, 380, 'Bezpieczny Plac');
+  ins('b2', 'Roczny: instalacja gazowa', 12, 120, 'Gaz-Kontrol'); ins('b2', 'Roczny: przewody kominowe', 12, 375, 'Zakład Kominiarski'); ins('b2', 'Pięcioletni: budynek i instalacja elektryczna', 60, 900, 'inż. budownictwa');
+  ins('b3', 'Roczny: elementy budynku i wentylacja', 12, 200, 'inż. budownictwa'); ins('b3', 'Windy 7A–7C: badanie okresowe UDT', 12, 345, 'Dźwig-Serwis'); ins('b3', 'Pięcioletni: budynek i instalacja elektryczna', 60, 1500, 'inż. budownictwa'); ins('b3', 'Plac zabaw: przegląd roczny', 12, 90, 'Bezpieczny Plac');
+  ins('b4', 'Roczny: instalacja gazowa', 12, 330, 'Gaz-Kontrol'); ins('b4', 'Roczny: przewody kominowe', 12, 362, 'Zakład Kominiarski'); ins('b4', 'Pięcioletni: budynek i instalacja elektryczna', 60, 1850, 'inż. budownictwa');
+  ins('b5', 'Roczny: elementy budynku i wentylacja', 12, 150, 'inż. budownictwa'); ins('b5', 'Winda: badanie okresowe UDT', 12, 240, 'Dźwig-Serwis'); ins('b5', 'Plac zabaw: przegląd roczny', 12, 300, 'Bezpieczny Plac');
+  ins('b6', 'Roczny: instalacja gazowa', 12, 200, 'Gaz-Kontrol'); ins('b6', 'Roczny: przewody kominowe', 12, 210, 'Zakład Kominiarski'); ins('b6', 'Pięcioletni: budynek i instalacja elektryczna', 60, 1200, 'inż. budownictwa');
+
+  /* uchwały: [budynek, numer, tytuł, start (dni temu), koniec (dni), za %, przeciw %, właścicieli którzy głosowali] */
+  var UC = [
+    ['b4', '4/2026', 'Remont dachu, finansowanie z funduszu remontowego i kredytu', 18, 10, 41.2, 12.6, 9],
+    ['b1', '7/2026', 'Podwyżka zaliczki na fundusz remontowy do 2,80 zł/m²', 12, 16, 33.8, 21.4, 27],
+    ['b3', '5/2026', 'Monitoring garażu podziemnego', 25, 3, 52.7, 8.9, 51],
+    ['b2', '3/2026', 'Wymiana domofonów na wideodomofony', 40, -6, 61.3, 14.2, 19],
+    ['b6', '6/2026', 'Ocieplenie ściany szczytowej', 33, -2, 38.5, 29.1, 22]
+  ].map(function (u, i) { return { id: 'u' + i, b: u[0], nr: u[1], t: u[2], start: P.addDays(TODAY, -u[3]), end: P.addDays(TODAY, u[4]), y: u[5], no: u[6], voters: u[7] }; });
+
+  var PLAN = [
+    { b: 'b4', what: 'Remont dachu i obróbek blacharskich', cost: 186000, when: 'wiosna, po uchwale 4/2026' },
+    { b: 'b1', what: 'Wymiana pionów wodnych, etap I', cost: 240000, when: 'lato' },
+    { b: 'b6', what: 'Ocieplenie ściany szczytowej', cost: 132000, when: 'po uchwale 6/2026' },
+    { b: 'b2', what: 'Wideodomofony na obu klatkach', cost: 28000, when: 'grudzień' },
+    { b: 'b3', what: 'Malowanie klatek 7A–7C', cost: 96000, when: 'przyszły rok' }
+  ];
+
+  P.$('#sign-day').textContent = P.dayTitle(TODAY);
+  P.$('#sign-sub').textContent = B.length + ' wspólnot, ' + B.reduce(function (s, b) { return s + b.lok; }, 0) + ' lokali';
+
+  function openG() { return ZG.filter(function (z) { return z.st !== 'zamk'; }); }
+  function ago(h) { return h < 1 ? 'przed chwilą' : h < 24 ? Math.round(h) + ' h temu' : P.n(Math.round(h / 24), 'dzień', 'dni', 'dni') + ' temu'; }
+  function insState(i) { var d = P.days(TODAY, i.next); return i.ordered ? 2 : d < 0 ? 0 : d <= 45 ? 1 : 3; }
+
+  /* ---------- ZGŁOSZENIA ---------- */
+  var zgF = 'open';
+  P.views.zgloszenia = function () {
+    var o = openG(), crit = o.filter(function (z) { return z.prio === 'a'; }), noPro = o.filter(function (z) { return !z.pro; });
+    var closed = ZG.filter(function (z) { return z.st === 'zamk'; });
+    var avg = closed.reduce(function (s, z) { return s + z.closeH; }, 0) / Math.max(1, closed.length);
+    P.strip(P.$('#zg-strip'), [
+      { label: 'Otwarte zgłoszenia', value: o.length, note: 'we wszystkich budynkach' },
+      { label: 'Awarie', value: crit.length, note: crit.map(function (z) { return BL[z.b].n + ': ' + z.txt.toLowerCase(); }).join('; ') || 'brak', tone: crit.length ? 'bad' : 'ok' },
+      { label: 'Bez fachowca', value: noPro.length, note: noPro.length ? 'czekają na przypisanie' : 'wszystkie przypisane', tone: noPro.length ? 'warn' : 'ok' },
+      { label: 'Średni czas naprawy', value: P.num(avg / 24, 1) + ' dnia', note: 'zamknięte w ostatnim miesiącu' }
+    ]);
+    P.seg(P.$('#zg-filter'), [{ v: 'open', l: 'Otwarte' }, { v: 'crit', l: 'Awarie i pilne' }, { v: 'closed', l: 'Zamknięte' }], zgF, function (v) { zgF = v; P.views.zgloszenia(); });
+    var rows = ZG.filter(function (z) { return zgF === 'closed' ? z.st === 'zamk' : z.st !== 'zamk' && (zgF === 'open' || z.prio !== 'z'); });
+    P.table(P.$('#zg-table'), [
+      { key: 'nr', label: 'Zgłoszenie', html: function (z) { return '<b>' + P.esc(z.txt) + '</b><span class="sub">' + z.nr + ', zgłosił: ' + P.esc(z.who) + '</span>'; } },
+      { key: 'b', label: 'Gdzie', val: function (z) { return BL[z.b].n; }, html: function (z) { return P.esc(BL[z.b].n) + '<span class="sub">' + P.esc(z.where) + '</span>'; } },
+      { key: 'cat', label: 'Rodzaj', val: function (z) { return CAT[z.cat]; }, html: function (z) { return CAT[z.cat]; } },
+      { key: 'prio', label: 'Priorytet', val: function (z) { return 'apz'.indexOf(z.prio); }, html: function (z) { return P.chip(PRIO[z.prio][0], PRIO[z.prio][1]); } },
+      { key: 'at', label: 'Zgłoszono', val: function (z) { return -z.h; }, html: function (z) { return ago(z.h) + (z.closeH ? '<span class="sub">naprawa ' + P.num(z.closeH / 24, 1) + ' dnia</span>' : ''); } },
+      { key: 'pro', label: 'Fachowiec', val: function (z) { return z.pro ? PR[z.pro].n : ''; }, html: function (z) { return z.pro ? PR[z.pro].n : '<span class="muted">nie przypisano</span>'; } },
+      { key: 'st', label: 'Status', val: function (z) { return Object.keys(STS).indexOf(z.st); }, html: function (z) { return P.chip(STS[z.st][0], STS[z.st][1]); } },
+      { key: 'a', label: '', sort: false, html: function (z) { return z.st === 'zamk' ? '' : '<div class="acts">' + (z.pro ? '<button class="btn sm" data-cl="' + z.id + '">Zamknij</button>' : '<button class="btn sm" data-as="' + z.id + '">Przypisz fachowca</button>') + '</div>'; } }
+    ], { rows: rows, sortKey: 'prio', empty: 'Brak zgłoszeń w tym widoku.' });
+    P.$$('[data-as]').forEach(function (b) { b.onclick = function () { assign(ZG.filter(function (z) { return z.id === b.getAttribute('data-as'); })[0]); }; });
+    P.$$('[data-cl]').forEach(function (b) { b.onclick = function () { var z = ZG.filter(function (x) { return x.id === b.getAttribute('data-cl'); })[0]; z.st = 'zamk'; z.closeH = z.h; P.toast('Zamknięto: ' + z.txt + '. Zgłaszający dostanie SMS'); P.refresh(); }; });
+  };
+  function assign(z) {
+    var body = '<dl class="kv"><dt>Gdzie</dt><dd>' + P.esc(BL[z.b].full) + ', ' + P.esc(z.where) + '</dd><dt>Co</dt><dd>' + P.esc(z.txt) + '</dd></dl>' +
+      '<label class="field" style="margin-top:14px"><span>Fachowiec</span><select id="as-p">' + P.options(PRO.map(function (p) { return { v: p.id, l: p.n + ' (' + p.t + ')' }; }), z.cat) + '</select></label>';
+    P.modal({ title: 'Przypisz fachowca', sub: z.nr, body: body, actions: [
+      { label: 'Anuluj', ghost: true },
+      { label: 'Przypisz i wyślij zlecenie', primary: true, onClick: function (close, d) { z.pro = P.$('#as-p', d).value; z.st = 'przyp'; close(); P.toast('Zlecenie wysłane do: ' + PR[z.pro].n); P.refresh(); } }
+    ] });
+  }
+  P.$('#zg-new').addEventListener('click', function () {
+    var body = '<div class="form-grid"><label class="field"><span>Budynek</span><select id="nz-b">' + P.options(B.map(function (b) { return { v: b.id, l: b.n }; }), 'b1') + '</select></label>' +
+      '<label class="field"><span>Gdzie dokładnie</span><input id="nz-w" placeholder="Np. klatka II, lok. 14"></label>' +
+      '<label class="field full"><span>Co się stało</span><input id="nz-t" placeholder="Np. nie działa oświetlenie na klatce"></label>' +
+      '<label class="field"><span>Rodzaj</span><select id="nz-c">' + P.options(Object.keys(CAT).map(function (k) { return { v: k, l: CAT[k] }; }), 'hyd') + '</select></label>' +
+      '<label class="field"><span>Priorytet</span><select id="nz-p">' + P.options([{ v: 'a', l: 'Awaria (zagrożenie, brak wody, prądu, winda)' }, { v: 'p', l: 'Pilne' }, { v: 'z', l: 'Zwykłe' }], 'z') + '</select></label>' +
+      '<p class="full small" id="nz-err" style="color:var(--bad)"></p></div>';
+    P.modal({ title: 'Nowe zgłoszenie', body: body, actions: [
+      { label: 'Anuluj', ghost: true },
+      { label: 'Dodaj zgłoszenie', primary: true, onClick: function (close, d) {
+        var t = P.$('#nz-t', d).value.trim();
+        if (!t) { P.$('#nz-err', d).textContent = 'Opisz, co się stało.'; return; }
+        ZG.unshift({ id: 'g' + ZG.length, nr: 'U/' + (TODAY.getMonth() + 1) + '/' + (140 + ZG.length), b: P.$('#nz-b', d).value, where: P.$('#nz-w', d).value.trim() || 'budynek', txt: t, cat: P.$('#nz-c', d).value, prio: P.$('#nz-p', d).value, at: new Date(), h: 0, st: 'nowe', pro: null, who: 'biuro', closeH: null });
+        close(); P.toast('Dodano zgłoszenie: ' + t); P.refresh();
+      } }
+    ] });
+  });
+
+  /* ---------- BUDYNKI ---------- */
+  function bArr(b) { return ARR.filter(function (a) { return a.b === b.id; }).reduce(function (s, a) { return s + a.amt; }, 0); }
+  function bNext(b) { return INS.filter(function (i) { return i.b === b.id; }).sort(function (x, y) { return x.next - y.next; })[0]; }
+  P.views.budynki = function () {
+    var fund = B.reduce(function (s, b) { return s + b.fund; }, 0), arr = ARR.reduce(function (s, a) { return s + a.amt; }, 0);
+    var planT = PLAN.reduce(function (s, p) { return s + p.cost; }, 0);
+    P.strip(P.$('#bu-strip'), [
+      { label: 'Wspólnoty', value: B.length, note: B.reduce(function (s, b) { return s + b.lok; }, 0) + ' lokali, ' + P.num(B.reduce(function (s, b) { return s + b.m2; }, 0)) + ' m²' },
+      { label: 'Fundusze remontowe', value: P.zl(fund), note: 'saldo łącznie' },
+      { label: 'Zaległości właścicieli', value: P.zl(arr), note: P.num(arr / fund * 100, 1) + '% funduszy', tone: 'warn' },
+      { label: 'Zaplanowane remonty', value: P.zl(planT), note: P.n(PLAN.length, 'pozycja', 'pozycje', 'pozycji') }
+    ]);
+    P.$('#bu-cards').innerHTML = B.map(function (b) {
+      var o = openG().filter(function (z) { return z.b === b.id; }), nx = bNext(b), a = bArr(b), plan = PLAN.filter(function (p) { return p.b === b.id; }).reduce(function (s, p) { return s + p.cost; }, 0);
+      var nd = P.days(TODAY, nx.next);
+      return '<button class="bcard" data-b="' + b.id + '"><div class="bcard-h"><b>' + P.esc(b.n) + '</b><span>' + b.lok + ' lokali, rok ' + b.year + (b.lift ? ', ' + P.n(b.lift, 'winda', 'windy', 'wind') : '') + '</span></div><div class="bcard-b">' +
+        '<div>Fundusz remontowy<b>' + P.zl(b.fund) + '</b></div><div>Zaległości<b class="' + (a > 2000 ? 'warn' : '') + '">' + P.zl(a) + '</b></div>' +
+        '<div>Otwarte usterki<b class="' + (o.some(function (z) { return z.prio === 'a'; }) ? 'bad' : '') + '">' + o.length + '</b></div><div>Najbliższy przegląd<b class="' + (nd < 0 ? 'bad' : nd <= 45 ? 'warn' : '') + '">' + P.d(nx.next) + '</b></div>' +
+        (plan ? '<div style="grid-column:1/-1">Plan remontów: ' + P.zl(plan) + (plan > b.fund ? ', więcej niż fundusz' : '') + '</div>' : '') + '</div></button>';
+    }).join('');
+    P.$$('.bcard').forEach(function (c) { c.onclick = function () { openB(BL[c.getAttribute('data-b')]); }; });
+    P.table(P.$('#bu-plan'), [
+      { key: 'b', label: 'Budynek', val: function (p) { return BL[p.b].n; }, html: function (p) { return P.esc(BL[p.b].n); } },
+      { key: 'what', label: 'Remont' },
+      { key: 'when', label: 'Kiedy' },
+      { key: 'cost', label: 'Koszt', num: 1, html: function (p) { return P.zl(p.cost); } },
+      { key: 'f', label: 'Pokrycie z funduszu', num: 1, val: function (p) { return BL[p.b].fund / p.cost; }, html: function (p) { var f = BL[p.b].fund / p.cost * 100; return P.prog(f, f >= 100 ? 'ok' : (f < 50 ? 'bad' : 'warn'), P.num(Math.min(f, 999)) + '%'); } }
+    ], { rows: PLAN, sortKey: 'f' });
+  };
+  function openB(b) {
+    var monthly = b.m2 * b.rate;
+    var body = '<dl class="kv"><dt>Adres</dt><dd>' + P.esc(b.full) + '</dd><dt>Lokale</dt><dd>' + b.lok + ', ' + P.num(b.m2) + ' m²</dd><dt>Fundusz</dt><dd>' + P.zl(b.fund) + ', wpływa ' + P.zl(monthly) + ' miesięcznie (' + P.num(b.rate, 2) + ' zł/m²)</dd>' +
+      '<dt>Zaległości</dt><dd>' + P.zl(bArr(b)) + '</dd><dt>Windy</dt><dd>' + (b.lift || 'brak') + '</dd><dt>Gaz w budynku</dt><dd>' + (b.gas ? 'tak' : 'nie') + '</dd></dl>' +
+      '<h3 style="font-size:14.5px;margin:16px 0 6px">Przeglądy</h3><div class="tbl-wrap"><table class="tbl"><tbody>' +
+      INS.filter(function (i) { return i.b === b.id; }).map(function (i) { return '<tr><td>' + P.esc(i.n) + '</td><td class="num">' + P.d(i.next) + '.' + String(i.next.getFullYear()).slice(2) + '</td></tr>'; }).join('') + '</tbody></table></div>';
+    P.modal({ title: b.full, sub: 'rok budowy ' + b.year, body: body, actions: [{ label: 'Zamknij', ghost: true }] });
+  }
+
+  /* ---------- OPŁATY ---------- */
+  P.views.oplaty = function () {
+    var tot = ARR.reduce(function (s, a) { return s + a.amt; }, 0), long = ARR.filter(function (a) { return a.mon >= 3; });
+    var noStep = ARR.filter(function (a) { return !a.step; });
+    var due = B.reduce(function (s, b) { return s + b.lok * 560; }, 0);
+    P.strip(P.$('#op-strip'), [
+      { label: 'Zaległości razem', value: P.zl(tot), note: P.n(ARR.length, 'lokal', 'lokale', 'lokali') },
+      { label: 'Trzy miesiące i więcej', value: long.length, note: P.zl(long.reduce(function (s, a) { return s + a.amt; }, 0)), tone: long.length ? 'bad' : 'ok' },
+      { label: 'Bez upomnienia', value: noStep.length, note: noStep.length ? 'można wysłać od razu' : 'wszyscy upomnieni', tone: noStep.length ? 'warn' : 'ok' },
+      { label: 'Ściągalność w miesiącu', value: P.num((1 - tot / due / 3) * 100) + '%', note: 'wpłaty w stosunku do naliczeń' }
+    ]);
+    P.table(P.$('#op-table'), [
+      { key: 'lok', label: 'Lokal', val: function (a) { return BL[a.b].n + a.lok; }, html: function (a) { return '<b>' + P.esc(BL[a.b].n) + ', lok. ' + a.lok + '</b><span class="sub">' + P.esc(a.own) + '</span>'; } },
+      { key: 'amt', label: 'Zaległość', num: 1, html: function (a) { return P.zl(a.amt) + '<span class="sub">' + P.n(a.mon, 'miesiąc', 'miesiące', 'miesięcy') + (a.mon > 2 ? ', z odsetkami' : '') + '</span>'; } },
+      { key: 'last', label: 'Ostatnia wpłata', val: function (a) { return +a.last; }, html: function (a) { return P.d(a.last) + '.' + String(a.last.getFullYear()).slice(2); } },
+      { key: 'step', label: 'Krok', val: function (a) { return a.step ? ['upom', 'wezw', 'pozew'].indexOf(a.step) + 1 : 0; }, html: function (a) { return a.step ? P.chip(STEP[a.step][0], STEP[a.step][1]) : '<span class="muted">nic nie wysłano</span>'; } },
+      { key: 'a', label: '', sort: false, html: function (a) { return a.step === 'pozew' ? '' : '<button class="btn sm" data-st="' + a.id + '">' + (!a.step ? 'Wyślij upomnienie' : a.step === 'upom' ? 'Wyślij wezwanie' : 'Przekaż do zarządu') + '</button>'; } }
+    ], { rows: ARR, sortKey: 'amt', sortDir: -1 });
+    P.$$('[data-st]').forEach(function (b) { b.onclick = function () {
+      var a = ARR.filter(function (x) { return x.id === b.getAttribute('data-st'); })[0];
+      if (!a.step) { a.step = 'upom'; P.toast('Upomnienie wysłane: ' + BL[a.b].n + ', lok. ' + a.lok); }
+      else if (a.step === 'upom') { a.step = 'wezw'; P.toast('Wezwanie przedsądowe wysłane: ' + BL[a.b].n + ', lok. ' + a.lok); }
+      else { P.toast('Sprawa przekazana zarządowi wspólnoty do decyzji o pozwie'); }
+      P.refresh(); }; });
+    P.bars(P.$('#op-bars'), B.map(function (b) { return { label: b.n, value: bArr(b), text: P.zl(bArr(b)), tone: bArr(b) > 4000 ? 'warn' : '' }; }).sort(function (x, y) { return y.value - x.value; }));
+  };
+  P.$('#op-all').addEventListener('click', function () { var n = 0; ARR.forEach(function (a) { if (!a.step && a.mon <= 2) { a.step = 'upom'; n++; } }); P.toast(n ? 'Upomnienia wysłane: ' + P.n(n, 'lokal', 'lokale', 'lokali') : 'Wszyscy z 1–2 miesiącami są już upomnieni'); P.refresh(); });
+
+  /* ---------- PRZEGLĄDY ---------- */
+  var prF = 'soon';
+  P.views.przeglady = function () {
+    var late = INS.filter(function (i) { return insState(i) === 0; }), soon = INS.filter(function (i) { return insState(i) === 1; }), ord = INS.filter(function (i) { return i.ordered; });
+    P.strip(P.$('#pr-strip'), [
+      { label: 'Po terminie', value: late.length, note: late.map(function (i) { return BL[i.b].n; }).join(', ') || 'brak', tone: late.length ? 'bad' : 'ok' },
+      { label: 'W ciągu 45 dni', value: soon.length, note: 'trzeba zamówić wykonawcę', tone: soon.length ? 'warn' : '' },
+      { label: 'Zlecone', value: ord.length, note: 'czekają na termin wykonawcy' },
+      { label: 'Wszystkie przeglądy', value: INS.length, note: 'roczne, pięcioletnie, UDT, place zabaw' }
+    ]);
+    P.seg(P.$('#pr-filter'), [{ v: 'soon', l: 'Do zrobienia' }, { v: 'all', l: 'Wszystkie' }], prF, function (v) { prF = v; P.views.przeglady(); });
+    var rows = INS.filter(function (i) { return prF === 'all' || insState(i) < 3; });
+    P.table(P.$('#pr-table'), [
+      { key: 'next', label: 'Termin', val: function (i) { return +i.next; }, html: function (i) { return '<b>' + P.d(i.next) + '.' + String(i.next.getFullYear()).slice(2) + '</b><span class="sub">' + P.rel(i.next) + '</span>'; } },
+      { key: 'n', label: 'Przegląd', html: function (i) { return P.esc(i.n) + '<span class="sub">co ' + (i.months === 12 ? 'rok' : i.months / 12 + ' lat') + ', ostatnio ' + P.d(i.last) + '.' + String(i.last.getFullYear()).slice(2) + '</span>'; } },
+      { key: 'b', label: 'Budynek', val: function (i) { return BL[i.b].n; }, html: function (i) { return P.esc(BL[i.b].n); } },
+      { key: 'who', label: 'Wykonawca' },
+      { key: 'st', label: 'Status', val: insState, html: function (i) { var s = insState(i); return [P.chip('Po terminie', 'bad'), P.chip('Wkrótce', 'warn'), P.chip('Zlecony', 'info'), P.chip('W porządku', 'ok')][s]; } },
+      { key: 'a', label: '', sort: false, html: function (i) { return insState(i) < 2 ? '<button class="btn sm" data-or="' + i.id + '">Zleć przegląd</button>' : ''; } }
+    ], { rows: rows, sortKey: 'next', empty: 'Nic do zrobienia w najbliższych 45 dniach.' });
+    P.$$('[data-or]').forEach(function (b) { b.onclick = function () { var i = INS.filter(function (x) { return x.id === b.getAttribute('data-or'); })[0]; i.ordered = true; P.toast('Zlecono: ' + i.n.toLowerCase() + ', ' + BL[i.b].n + ' (' + i.who + ')'); P.refresh(); }; });
+  };
+
+  /* ---------- UCHWAŁY ---------- */
+  function ucState(u) { var open = P.days(TODAY, u.end) >= 0; return u.y > 50 ? 'ok' : (open ? 'open' : 'fail'); }
+  P.views.uchwaly = function () {
+    var open = UC.filter(function (u) { return P.days(TODAY, u.end) >= 0; }), passed = UC.filter(function (u) { return u.y > 50; });
+    var risk = open.filter(function (u) { return u.y <= 50 && P.days(TODAY, u.end) <= 14; });
+    P.strip(P.$('#uc-strip'), [
+      { label: 'Głosowania w toku', value: open.length, note: 'zbieranie podpisów i głosów online' },
+      { label: 'Przyjęte', value: passed.length, note: passed.map(function (u) { return u.nr; }).join(', ') || 'brak', tone: 'ok' },
+      { label: 'Brakuje głosów', value: risk.length, note: risk.length ? 'do końca głosowania mniej niż 2 tygodnie' : 'brak', tone: risk.length ? 'warn' : '' },
+      { label: 'Nie przyjęte', value: UC.filter(function (u) { return ucState(u) === 'fail'; }).length, note: 'można powtórzyć na zebraniu' }
+    ]);
+    P.table(P.$('#uc-table'), [
+      { key: 'nr', label: 'Uchwała', html: function (u) { return '<b>' + u.nr + ': ' + P.esc(u.t) + '</b><span class="sub">' + P.esc(BL[u.b].full) + '</span>'; } },
+      { key: 'v', label: 'Głosy udziałami', sort: false, html: function (u) { return '<div class="vote" role="img" aria-label="Za ' + P.num(u.y, 1) + '%, przeciw ' + P.num(u.no, 1) + '%"><div class="y" style="width:' + u.y + '%"></div><div class="n" style="width:' + u.no + '%"></div><span class="half"></span></div><span class="sub">za ' + P.num(u.y, 1) + '%, przeciw ' + P.num(u.no, 1) + '%, głosowało ' + u.voters + ' z ' + BL[u.b].lok + '</span>'; } },
+      { key: 'end', label: 'Koniec głosowania', val: function (u) { return +u.end; }, html: function (u) { return P.d(u.end) + '<span class="sub">' + P.rel(u.end) + '</span>'; } },
+      { key: 'st', label: 'Status', val: function (u) { return ['open', 'ok', 'fail'].indexOf(ucState(u)); }, html: function (u) { var s = ucState(u); return s === 'ok' ? P.chip('Przyjęta', 'ok') : s === 'fail' ? P.chip('Nie przyjęta', 'bad') : P.chip('Brakuje ' + P.num(50.01 - u.y, 1) + ' pp. udziałów', 'warn'); } },
+      { key: 'a', label: '', sort: false, html: function (u) { return ucState(u) === 'open' ? '<button class="btn sm" data-rv="' + u.id + '">Przypomnij niegłosującym</button>' : ''; } }
+    ], { rows: UC, sortKey: 'st' });
+    P.$$('[data-rv]').forEach(function (b) { b.onclick = function () { var u = UC.filter(function (x) { return x.id === b.getAttribute('data-rv'); })[0]; P.toast('Przypomnienie wysłane do ' + P.n(BL[u.b].lok - u.voters, 'właściciela', 'właścicieli', 'właścicieli') + ', uchwała ' + u.nr); }; });
+  };
+
+  P.initTabs();
+})();
+</script>
+</body>
+</html>

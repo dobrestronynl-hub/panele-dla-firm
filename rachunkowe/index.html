@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Biuro rachunkowe – panel demo</title>
+<meta name="description" content="Panel demo dla biura rachunkowego: terminy miesiąca dla każdego klienta, dokumenty i KSeF, pakiety i abonamenty, obciążenie zespołu, rozliczenia biura. Dane przykładowe.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
+<link rel="stylesheet" href="../assets/panel.css">
+<style>
+  /* Szyld jak strona księgi: linie i czerwony margines */
+  body {
+    --sign-bg: #1E2A3E; --sign-fg: #EEF1F6; --sign-sub: rgba(238, 241, 246, .74);
+    --sign-pattern: linear-gradient(90deg, transparent 14px, rgba(222, 98, 98, .6) 14px 16px, transparent 16px), repeating-linear-gradient(to bottom, transparent 0 25px, rgba(255, 255, 255, .07) 25px 26px);
+    --sign-band: linear-gradient(to bottom, #DE6262 0 2px, transparent 2px 4px, #DE6262 4px 6px); --sign-band-h: 6px;
+    --accent: #2E5597; --accent-ink: #FFFFFF; --accent-soft: #E4EBF6; --accent-line: #2E5597;
+  }
+  .mx td { white-space: nowrap; }
+  .mx td:first-child { white-space: normal; min-width: 210px; }
+  .st { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+  .st::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .st.s0 { background: var(--warn-soft); color: var(--warn); }
+  .st.s1 { background: var(--mute-soft); color: var(--mute); }
+  .st.s2 { background: var(--info-soft); color: var(--info); }
+  .st.s3 { background: var(--ok-soft); color: var(--ok); }
+  .st.late { background: var(--bad-soft); color: var(--bad); }
+  .st.na { background: none; color: var(--ink-3); font-weight: 400; }
+  .st.na::before { display: none; }
+  .legend { display: flex; gap: 8px 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--ink-2); }
+  .doclist { list-style: none; margin: 0; padding: 0; }
+  .doclist li { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line-soft); }
+  .doclist li:last-child { border-bottom: 0; }
+  .ob-row { display: grid; grid-template-columns: minmax(0, 1fr) 190px; gap: 10px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--line-soft); }
+  .ob-row:last-child { border-bottom: 0; }
+  .ob-row select { width: 100%; }
+</style>
+</head>
+<body>
+
+<header class="sign">
+  <div class="sign-top">
+    <a href="../index.html">Wszystkie panele</a>
+    <span class="demo-flag">Dane przykładowe</span>
+  </div>
+  <div class="sign-inner">
+    <div>
+      <h1>Twoje biuro rachunkowe</h1>
+      <p class="sign-sub">Terminy miesiąca dla każdego klienta, dokumenty i KSeF, pakiety, zespół</p>
+    </div>
+    <div class="sign-meta"><strong id="sign-day"></strong><span id="sign-sub"></span></div>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="Moduły panelu">
+  <div class="tabs-inner" role="tablist">
+    <button class="tab" data-tab="terminy">Terminy miesiąca</button>
+    <button class="tab" data-tab="dokumenty">Dokumenty od klientów</button>
+    <button class="tab" data-tab="klienci">Klienci i pakiety</button>
+    <button class="tab" data-tab="zespol">Zespół</button>
+    <button class="tab" data-tab="rozliczenia">Rozliczenia biura</button>
+  </div>
+</nav>
+
+<main>
+  <!-- TERMINY -->
+  <section data-panel="terminy" class="stack">
+    <div id="te-strip"></div>
+    <div class="box">
+      <div class="box-h">
+        <div><h2 id="te-title"></h2><p>Kliknij klienta, żeby zmienić status albo wysłać mu kwoty do zapłaty</p></div>
+        <div class="row"><div id="te-who"></div><button class="btn sm primary" id="te-send">Wyślij kwoty wszystkim gotowym</button></div>
+      </div>
+      <div class="box-b"><div class="legend" id="te-legend"></div></div>
+      <div class="box-b flush scroll-lg" id="te-table"></div>
+    </div>
+  </section>
+
+  <!-- DOKUMENTY -->
+  <section data-panel="dokumenty" class="stack">
+    <div id="do-strip"></div>
+    <div class="cols">
+      <div class="box">
+        <div class="box-h"><div id="do-filter"></div><button class="btn sm" id="do-remind">Przypomnij wszystkim, którym czegoś brakuje</button></div>
+        <div class="box-b flush scroll-lg" id="do-table"></div>
+      </div>
+      <div class="stack">
+        <div class="box">
+          <div class="box-h"><h2>Kiedy przychodzą dokumenty</h2><p>poprzedni miesiąc</p></div>
+          <div class="box-b"><div id="do-bars"></div><p class="small muted" style="margin-top:10px" id="do-bars-note"></p></div>
+        </div>
+        <div class="box">
+          <div class="box-h"><h2>KSeF</h2></div>
+          <div class="box-b"><p class="lead" id="do-ksef"></p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- KLIENCI -->
+  <section data-panel="klienci" class="stack">
+    <div id="kl-strip"></div>
+    <div class="box">
+      <div class="box-h"><h2>Klienci i abonamenty</h2><p>dokumenty: średnio z 3 miesięcy; za dokument: pracownik liczony jak 6 dokumentów</p></div>
+      <div class="box-b flush" id="kl-table"></div>
+    </div>
+  </section>
+
+  <!-- ZESPÓŁ -->
+  <section data-panel="zespol" class="stack">
+    <div id="ze-strip"></div>
+    <div class="box">
+      <div class="box-h"><h2>Kto co ma w tym miesiącu</h2></div>
+      <div class="box-b flush" id="ze-table"></div>
+    </div>
+    <div class="cols-even">
+      <div class="box">
+        <div class="box-h"><h2>Dokumenty do zaksięgowania</h2><p>zaksięgowane z otrzymanych</p></div>
+        <div class="box-b"><div id="ze-bars"></div></div>
+      </div>
+      <div class="box">
+        <div class="box-h"><h2>Zastępstwa</h2><p>kto przejmuje klientów podczas urlopu</p></div>
+        <div class="box-b flush" id="ze-sub"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ROZLICZENIA -->
+  <section data-panel="rozliczenia" class="stack">
+    <div id="ro-strip"></div>
+    <div class="box">
+      <div class="box-h"><h2>Faktury biura dla klientów</h2><p>kwoty netto, VAT 23%</p></div>
+      <div class="box-b flush" id="ro-table"></div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <span>Panel demo. Klienci, kwoty i dokumenty są wymyślone, zmiany znikają po odświeżeniu strony.</span>
+  <a href="../index.html">Zobacz pozostałe panele</a>
+</footer>
+
+<script src="../assets/panel.js"></script>
+<script>
+(function () {
+  'use strict';
+  var r = P.rng(4410);
+  var TODAY = P.today();
+  var DOM = TODAY.getDate();
+  var DOC_DUE = 7;             /* biuro prosi o dokumenty do 7. dnia miesiąca */
+  var OVER_PRICE = 4;          /* dopłata za dokument ponad pakiet, zł netto */
+
+  /* ---------- Dane przykładowe ---------- */
+  var TEAM = [
+    { id: 'iw', n: 'Iwona Kaczmarek', role: 'główna księgowa' },
+    { id: 'pa', n: 'Paulina Wrona', role: 'księgowa' },
+    { id: 'do', n: 'Dorota Sitek', role: 'kadry i płace' }
+  ];
+  var TM = {}; TEAM.forEach(function (t) { TM[t.id] = t; });
+  /* [nazwa, forma, podatek, VAT, pracownicy, abonament netto, pakiet dokumentów, opiekun, faktury w KSeF] */
+  var SRC = [
+    ['Piekarnia Kłos, Jan Mróz', 'JDG', 'liniowy', 1, 6, 900, 60, 'pa', 1],
+    ['Gabinet Kosmetyczny Iris, Ewa Jarosz', 'JDG', 'ryczałt', 1, 1, 450, 30, 'pa', 1],
+    ['Meblotech sp. z o.o.', 'sp. z o.o.', 'CIT 9%', 1, 14, 2600, 200, 'iw', 1],
+    ['Kamil Żak, usługi IT', 'JDG', 'ryczałt', 1, 0, 300, 15, 'pa', 0],
+    ['Agroserwis Pola sp.j.', 'sp.j.', 'liniowy', 1, 8, 1500, 120, 'iw', 1],
+    ['Kwiaciarnia Pod Lipą s.c.', 's.c.', 'skala', 1, 2, 600, 50, 'pa', 1],
+    ['Elmont Instalacje sp. z o.o.', 'sp. z o.o.', 'CIT 9%', 1, 22, 3400, 250, 'iw', 1],
+    ['Gabinet stomatologiczny, Tomasz Bielak', 'JDG', 'liniowy', 0, 3, 700, 40, 'pa', 1],
+    ['Pakmar Opakowania sp. z o.o.', 'sp. z o.o.', 'CIT 9%', 1, 9, 2200, 300, 'iw', 1],
+    ['Natalia Gil, tłumaczenia', 'JDG', 'ryczałt', 0, 0, 250, 10, 'pa', 0],
+    ['Restauracja Stary Młyn sp. z o.o.', 'sp. z o.o.', 'CIT 9%', 1, 16, 2800, 260, 'iw', 1],
+    ['Szymon Rak, transport', 'JDG', 'liniowy', 1, 2, 650, 50, 'pa', 1],
+    ['Fundacja Zielony Dom', 'fundacja', 'CIT', 0, 3, 900, 40, 'iw', 1],
+    ['Linea Biuro Projektowe sp.p.', 'sp.p.', 'liniowy', 1, 4, 1200, 60, 'pa', 1],
+    ['Sklep Rowerowy Szprycha, Adam Wójcik', 'JDG', 'skala', 1, 1, 550, 80, 'pa', 0],
+    ['Ekodom Deweloper sp. z o.o.', 'sp. z o.o.', 'CIT 9%', 1, 5, 3000, 150, 'iw', 1]
+  ];
+  var LEGAL = ['sp. z o.o.', 'fundacja'];   /* osobowość prawna: ZUS do 15. dnia */
+  var OB = [
+    { k: 'place', n: 'Płace', day: 10, full: 'Lista płac' },
+    { k: 'zus', n: 'ZUS', day: null, full: 'Składki ZUS' },
+    { k: 'pit', n: 'Zaliczka', day: 20, full: 'Zaliczka na podatek dochodowy' },
+    { k: 'jpk', n: 'JPK_V7', day: 25, full: 'JPK_V7M i VAT' }
+  ];
+  var STATES = ['Czeka na dokumenty', 'W pracy', 'Gotowe', 'Wysłane'];
+  function due(day) { var d = new Date(TODAY.getFullYear(), TODAY.getMonth(), day); while (P.isWeekend(d)) d = P.addDays(d, 1); return d; }
+  function zusDay(c) { return LEGAL.indexOf(c.forma) >= 0 ? 15 : 20; }
+  function obDue(c, o) { return due(o.k === 'zus' ? zusDay(c) : o.day); }
+  function applies(c, o) { if (o.k === 'place') return c.prac > 0; if (o.k === 'jpk') return c.vat; return true; }
+
+  var prevMonth = new Date(TODAY.getFullYear(), TODAY.getMonth() - 1, 1);
+  /* jak daleko jest miesiąc rozliczeń; demo zawsze pokazuje mieszankę statusów */
+  var progress = Math.min(1, 0.45 + Math.max(0, DOM - 1) / 24 * 0.55);
+  var CL = SRC.map(function (s, i) {
+    var c = { id: 'c' + i, n: s[0], forma: s[1], tax: s[2], vat: !!s[3], prac: s[4], fee: s[5], pack: s[6], op: s[7], ksef: !!s[8] };
+    var sp = [0.9, 0.3, 0.8, 1, 0.5, 0.1, 0.7, 0.6, 0.95, 0.4, 0.2, 0.75, 0.85, 0.65, 0.15, 0.55][i];   /* jak szybko klient przysyła dokumenty */
+    c.avgDocs = Math.round(s[6] * (0.6 + r() * 0.75));
+    c.recv = Math.round(c.avgDocs * Math.min(1, 0.25 + progress * 1.1 + r() * 0.35));
+    c.booked = Math.round(c.recv * Math.min(1, progress * 1.3 + r() * 0.25));
+    /* czego brakuje od klienta */
+    var need = ['Wyciąg bankowy', 'Paragony i rachunki'];
+    if (!c.ksef) need.push('Faktury sprzedaży (PDF)');
+    if (c.prac) need.push('Czas pracy i nieobecności');
+    if (i % 5 === 2) need.push('Umowa leasingu, aneks');
+    var have = Math.min(need.length, Math.floor(need.length * Math.min(1, sp * 0.75 + progress * 0.55 + r() * 0.15)));
+    c.need = need.map(function (n, j) { return { n: n, ok: j < have }; });
+    c.last = P.addDays(TODAY, -P.int(r, 0, Math.max(1, DOM + 3)));
+    c.st = {};
+    OB.forEach(function (o) {
+      if (!applies(c, o)) { c.st[o.k] = null; return; }
+      var left = P.days(TODAY, obDue(c, o));
+      var docsOk = c.need.every(function (x) { return x.ok; });
+      var score = sp * 0.6 + progress * 0.55 + r() * 0.3 - OB.indexOf(o) * 0.06;
+      var s = score > 1.05 ? 3 : score > 0.85 ? 2 : score > 0.6 ? 1 : 0;
+      if (!docsOk && o.k !== 'zus' && s > 1) s = 1;
+      if (!docsOk && o.k !== 'zus' && sp < 0.35) s = 0;
+      if (left < 0) s = 3; else if (left <= 2 && s < 2) s = 2;
+      if (o.k === 'place' && left < 0) s = 3;
+      c.st[o.k] = s;
+    });
+    return c;
+  });
+  /* jeden klient spóźniony z płacami, jeden z kompletem i wszystkim gotowym */
+  if (CL[5].st.place != null && P.days(TODAY, obDue(CL[5], OB[0])) < 0) CL[5].st.place = 2;
+  var CLI = {}; CL.forEach(function (c) { CLI[c.id] = c; });
+  function ov(c) { return c.avgDocs > c.pack * 1.05; }   /* ponad pakiet, z 5% tolerancji */
+  function complete(c) { return c.need.every(function (x) { return x.ok; }); }
+
+  /* napływ dokumentów w poprzednim miesiącu */
+  var FLOW = [['1–5', 24], ['6–7', 19], ['8–10', 21], ['11–15', 22], ['16–20', 9], ['21 i później', 5]];
+
+  /* faktury biura */
+  var FV = [];
+  CL.forEach(function (c, i) {
+    var iss = new Date(TODAY.getFullYear(), TODAY.getMonth() - 1, 1);
+    var paid = i % 6 === 3 ? null : P.addDays(iss, P.int(r, 3, 12));
+    FV.push({ id: 'f' + i, cl: c.id, what: 'Abonament ' + P.MON[prevMonth.getMonth()], net: c.fee, iss: iss, due: P.addDays(iss, 14), paid: paid });
+    if (ov(c)) FV.push({ id: 'g' + i, cl: c.id, what: 'Dokumenty ponad pakiet', net: (c.avgDocs - c.pack) * OVER_PRICE, iss: iss, due: P.addDays(iss, 14), paid: i % 2 ? paid : null });
+  });
+  var fvN = 0;
+  FV.forEach(function (f) { f.nr = 'FV ' + (++fvN) + '/' + (f.iss.getMonth() + 1) + '/' + f.iss.getFullYear(); });
+
+  P.$('#sign-day').textContent = P.dayTitle(TODAY);
+  P.$('#sign-sub').textContent = CL.length + ' klientów, ' + TEAM.length + ' osoby w zespole';
+
+  function stHtml(c, o) {
+    var s = c.st[o.k];
+    if (s == null) return '<span class="st na">nie dotyczy</span>';
+    var late = s < 3 && P.days(TODAY, obDue(c, o)) < 0;
+    return '<span class="st ' + (late ? 'late' : 's' + s) + '">' + (late ? 'Po terminie' : STATES[s]) + '</span>';
+  }
+
+  /* ---------- TERMINY ---------- */
+  var teWho = 'all';
+  P.views.terminy = function () {
+    var docsOk = CL.filter(complete).length;
+    var next = OB.map(function (o) {
+      var list = CL.filter(function (c) { return c.st[o.k] != null && c.st[o.k] < 3; });
+      var d = list.length ? list.map(function (c) { return obDue(c, o); }).sort(function (a, b) { return a - b; })[0] : null;
+      return { o: o, d: d, n: list.filter(function (c) { return +obDue(c, o) === +d; }).length };
+    }).filter(function (x) { return x.d && P.days(TODAY, x.d) >= 0; }).sort(function (a, b) { return a.d - b.d; })[0];
+    var ready = []; CL.forEach(function (c) { OB.forEach(function (o) { if (c.st[o.k] === 2) ready.push([c, o]); }); });
+    var late = []; CL.forEach(function (c) { OB.forEach(function (o) { if (c.st[o.k] != null && c.st[o.k] < 3 && P.days(TODAY, obDue(c, o)) < 0) late.push([c, o]); }); });
+    P.strip(P.$('#te-strip'), [
+      { label: 'Najbliższy termin', value: next ? P.d(next.d) : '—', note: next ? next.o.full + ', ' + P.rel(next.d) + ', ' + P.n(next.n, 'klient', 'klientów', 'klientów') + ' do zrobienia' : 'wszystko wysłane', tone: next && P.days(TODAY, next.d) <= 3 ? 'warn' : '' },
+      { label: 'Komplet dokumentów', value: docsOk + ' z ' + CL.length, note: P.days(TODAY, due(DOC_DUE)) >= 0 ? 'klienci mają czas do ' + P.d(due(DOC_DUE)) : 'termin na dokumenty minął ' + P.d(due(DOC_DUE)), tone: DOM > DOC_DUE && docsOk < CL.length ? 'warn' : '' },
+      { label: 'Gotowe do wysłania', value: ready.length, note: 'kwoty do przekazania klientom' },
+      { label: 'Po terminie', value: late.length, note: late.length ? late.slice(0, 2).map(function (x) { return x[0].n.split(',')[0] + ' (' + x[1].n + ')'; }).join(', ') : 'brak', tone: late.length ? 'bad' : 'ok' }
+    ]);
+    P.$('#te-title').textContent = 'Rozliczenie za ' + P.MON[prevMonth.getMonth()] + ' ' + prevMonth.getFullYear();
+    P.$('#te-legend').innerHTML = STATES.map(function (s, i) { return '<span class="st s' + i + '">' + s + '</span>'; }).join('') + '<span class="st late">Po terminie</span>';
+    P.seg(P.$('#te-who'), [{ v: 'all', l: 'Wszyscy' }].concat(TEAM.filter(function (t) { return t.id !== 'do'; }).map(function (t) { return { v: t.id, l: t.n.split(' ')[0] }; })), teWho, function (v) { teWho = v; P.views.terminy(); });
+    var rows = CL.filter(function (c) { return teWho === 'all' || c.op === teWho; });
+    P.table(P.$('#te-table'), [
+      { key: 'n', label: 'Klient', html: function (c) { return '<b>' + P.esc(c.n) + '</b><span class="sub">' + c.forma + ', ' + c.tax + (c.vat ? ', VAT' : ', bez VAT') + '</span>'; } },
+      { key: 'docs', label: 'Dokumenty', val: function (c) { return c.need.filter(function (x) { return x.ok; }).length / c.need.length; }, html: function (c) { var d = c.need.filter(function (x) { return x.ok; }).length; return P.prog(d / c.need.length * 100, d === c.need.length ? 'ok' : (DOM > DOC_DUE ? 'warn' : ''), d + ' z ' + c.need.length); } }
+    ].concat(OB.map(function (o) {
+      return { key: o.k, label: o.n + (o.day ? ' (' + P.d(due(o.day)) + ')' : ' (15./20.)'), val: function (c) { return c.st[o.k] == null ? 9 : c.st[o.k]; }, html: function (c) { return stHtml(c, o) + (o.k === 'zus' && c.st.zus != null ? '<span class="sub">do ' + P.d(obDue(c, o)) + '</span>' : ''); } };
+    })).concat([{ key: 'op', label: 'Prowadzi', val: function (c) { return TM[c.op].n; }, html: function (c) { return TM[c.op].n.split(' ')[0]; } }]),
+    { rows: rows, sortKey: 'docs', onRow: openClient, empty: 'Brak klientów.' });
+    P.$('#te-table table').classList.add('mx');
+  };
+  function openClient(c) {
+    var body = '<dl class="kv"><dt>Forma</dt><dd>' + c.forma + ', ' + c.tax + (c.vat ? ', VAT miesięcznie' : ', zwolniony z VAT') + '</dd><dt>Pracownicy</dt><dd>' + c.prac + '</dd><dt>Prowadzi</dt><dd>' + TM[c.op].n + '</dd>' +
+      '<dt>Dokumenty</dt><dd>' + c.need.filter(function (x) { return x.ok; }).length + ' z ' + c.need.length + (complete(c) ? ', komplet' : ', brakuje: ' + c.need.filter(function (x) { return !x.ok; }).map(function (x) { return x.n.toLowerCase(); }).join(', ')) + '</dd></dl>' +
+      '<h3 style="font-size:14.5px;margin:16px 0 4px">Rozliczenie za ' + P.MON[prevMonth.getMonth()] + '</h3>' +
+      OB.filter(function (o) { return applies(c, o); }).map(function (o) {
+        return '<div class="ob-row"><span>' + o.full + '<span class="sub" style="display:block;font-size:12px;color:var(--ink-3)">termin ' + P.d(obDue(c, o)) + ', ' + P.rel(obDue(c, o)) + '</span></span><select data-k="' + o.k + '" aria-label="' + o.full + '">' + P.options(STATES.map(function (s, i) { return { v: i, l: s }; }), c.st[o.k]) + '</select></div>';
+      }).join('');
+    P.modal({ title: c.n, sub: 'Terminy i statusy', body: body, actions: [
+      { label: 'Anuluj', ghost: true },
+      { label: 'Wyślij kwoty klientowi', onClick: function (close, d) { save(d); var n = OB.filter(function (o) { return c.st[o.k] === 2; }); n.forEach(function (o) { c.st[o.k] = 3; }); close(); P.toast(n.length ? 'Kwoty do zapłaty wysłane: ' + c.n.split(',')[0] + ' (' + n.map(function (o) { return o.n; }).join(', ') + ')' : 'Nic nie jest jeszcze gotowe do wysłania'); P.refresh(); } },
+      { label: 'Zapisz', primary: true, onClick: function (close, d) { save(d); close(); P.toast('Zapisano: ' + c.n.split(',')[0]); P.refresh(); } }
+    ] });
+    function save(d) { P.$$('select[data-k]', d).forEach(function (s) { c.st[s.getAttribute('data-k')] = +s.value; }); }
+  }
+  P.$('#te-send').addEventListener('click', function () {
+    var n = 0, who = {};
+    CL.forEach(function (c) { OB.forEach(function (o) { if (c.st[o.k] === 2) { c.st[o.k] = 3; n++; who[c.id] = 1; } }); });
+    P.toast(n ? 'Wysłano kwoty do zapłaty: ' + P.n(Object.keys(who).length, 'klient', 'klientów', 'klientów') + ', ' + P.n(n, 'pozycja', 'pozycje', 'pozycji') : 'Nic nie czeka na wysłanie');
+    P.refresh();
+  });
+
+  /* ---------- DOKUMENTY ---------- */
+  var doF = 'miss';
+  P.views.dokumenty = function () {
+    var miss = CL.filter(function (c) { return !complete(c); });
+    var recv = CL.reduce(function (s, c) { return s + c.recv; }, 0), ks = CL.filter(function (c) { return c.ksef; });
+    var silent = CL.filter(function (c) { return P.days(c.last, TODAY) > 10; });
+    P.strip(P.$('#do-strip'), [
+      { label: 'Klienci z brakami', value: miss.length, note: 'termin na dokumenty: ' + P.d(due(DOC_DUE)), tone: miss.length && DOM > DOC_DUE ? 'bad' : (miss.length ? 'warn' : 'ok') },
+      { label: 'Dokumenty w tym miesiącu', value: recv, note: 'z czego faktury z KSeF pobrały się same' },
+      { label: 'Klienci w KSeF', value: ks.length + ' z ' + CL.length, note: 'pozostali przysyłają faktury sprzedaży jako PDF' },
+      { label: 'Cisza od klienta', value: silent.length, note: silent.length ? 'nic nie przysłali od ponad 10 dni' : 'wszyscy coś przysłali', tone: silent.length ? 'warn' : '' }
+    ]);
+    P.seg(P.$('#do-filter'), [{ v: 'miss', l: 'Brakuje dokumentów' }, { v: 'all', l: 'Wszyscy' }], doF, function (v) { doF = v; P.views.dokumenty(); });
+    var rows = CL.filter(function (c) { return doF === 'all' || !complete(c); });
+    P.table(P.$('#do-table'), [
+      { key: 'n', label: 'Klient', html: function (c) { return '<b>' + P.esc(c.n) + '</b><span class="sub">' + (c.ksef ? 'faktury z KSeF' : 'faktury sprzedaży jako PDF') + ', prowadzi ' + TM[c.op].n.split(' ')[0] + '</span>'; } },
+      { key: 'miss', label: 'Brakuje', val: function (c) { return c.need.filter(function (x) { return !x.ok; }).length; }, html: function (c) { var m = c.need.filter(function (x) { return !x.ok; }); return m.length ? m.map(function (x) { return P.esc(x.n); }).join('<br>') : P.chip('Komplet', 'ok'); } },
+      { key: 'recv', label: 'Dokumenty', num: 1, html: function (c) { return c.recv + '<span class="sub">zwykle ' + c.avgDocs + '</span>'; } },
+      { key: 'last', label: 'Ostatnio przysłał', val: function (c) { return +c.last; }, html: function (c) { return P.d(c.last) + '<span class="sub">' + P.rel(c.last) + '</span>'; } },
+      { key: 'a', label: '', sort: false, html: function (c) { return complete(c) ? '' : '<button class="btn sm" data-rem="' + c.id + '">Przypomnij</button>'; } }
+    ], { rows: rows, sortKey: 'miss', sortDir: -1, onRow: openDocs, empty: 'Wszyscy klienci przysłali komplet dokumentów.' });
+    P.$$('[data-rem]').forEach(function (b) { b.onclick = function () { var c = CLI[b.getAttribute('data-rem')]; P.toast('Przypomnienie wysłane: ' + c.n.split(',')[0] + ' (' + c.need.filter(function (x) { return !x.ok; }).map(function (x) { return x.n.toLowerCase(); }).join(', ') + ')'); }; });
+    var tot = FLOW.reduce(function (s, f) { return s + f[1]; }, 0);
+    P.bars(P.$('#do-bars'), FLOW.map(function (f, i) { return { label: 'dni ' + f[0], value: f[1] / tot * 100, text: P.num(f[1] / tot * 100) + '%', tone: i >= 2 ? 'warn' : '' }; }), { max: 40 });
+    P.$('#do-bars-note').textContent = P.num((tot - FLOW[0][1] - FLOW[1][1]) / tot * 100) + '% dokumentów przyszło po ' + DOC_DUE + '. dniu. Przypomnienie 3 dni przed terminem zwykle to zmniejsza.';
+    P.$('#do-ksef').innerHTML = 'Od 1 kwietnia 2026 KSeF obejmuje prawie wszystkich podatników VAT, a najmniejsze firmy dołączają w 2027. Faktury klientów w KSeF pobierają się same, więc od nich potrzebne są już tylko <b>wyciągi, paragony, umowy i czas pracy</b>.';
+  };
+  function openDocs(c) {
+    var body = '<ul class="doclist">' + c.need.map(function (x, i) { return '<li><label class="check"><input type="checkbox" data-i="' + i + '"' + (x.ok ? ' checked' : '') + '> ' + P.esc(x.n) + '</label>' + (x.ok ? P.chip('jest', 'ok') : P.chip('brak', 'warn')) + '</li>'; }).join('') +
+      (c.ksef ? '<li><span>Faktury sprzedaży i zakupu</span>' + P.chip('z KSeF, automatycznie', 'info') + '</li>' : '') + '</ul>';
+    P.modal({ title: c.n, sub: 'Dokumenty za ' + P.MON[prevMonth.getMonth()], body: body, actions: [
+      { label: 'Anuluj', ghost: true },
+      { label: 'Zapisz', primary: true, onClick: function (close, d) {
+        P.$$('input[data-i]', d).forEach(function (i) { c.need[+i.getAttribute('data-i')].ok = i.checked; });
+        if (complete(c)) OB.forEach(function (o) { if (c.st[o.k] === 0) c.st[o.k] = 1; });
+        close(); P.toast(complete(c) ? 'Komplet dokumentów: ' + c.n.split(',')[0] : 'Zapisano dokumenty: ' + c.n.split(',')[0]); P.refresh();
+      } }
+    ] });
+  }
+  P.$('#do-remind').addEventListener('click', function () { var n = CL.filter(function (c) { return !complete(c); }).length; P.toast(n ? 'Przypomnienia wysłane do: ' + P.n(n, 'klient', 'klientów', 'klientów') : 'Nikomu nic nie brakuje'); });
+
+  /* ---------- KLIENCI ---------- */
+  P.views.klienci = function () {
+    var mrr = CL.reduce(function (s, c) { return s + c.fee; }, 0);
+    var over = CL.filter(function (c) { return ov(c); });
+    var cheap = CL.filter(function (c) { return c.fee / Math.max(1, c.avgDocs + c.prac * 6) < 9; });
+    P.strip(P.$('#kl-strip'), [
+      { label: 'Abonamenty miesięcznie', value: P.zl(mrr), note: 'netto, ' + P.n(CL.length, 'klient', 'klientów', 'klientów') },
+      { label: 'Ponad pakiet', value: over.length, note: 'dopłata ' + P.zl(over.reduce(function (s, c) { return s + (c.avgDocs - c.pack) * OVER_PRICE; }, 0)) + ' miesięcznie', tone: over.length ? 'warn' : '' },
+      { label: 'Za tani abonament', value: cheap.length, note: 'mniej niż 9 zł za dokument', tone: cheap.length ? 'warn' : 'ok' },
+      { label: 'Średni abonament', value: P.zl(mrr / CL.length), note: 'netto' }
+    ]);
+    P.table(P.$('#kl-table'), [
+      { key: 'n', label: 'Klient', html: function (c) { return '<b>' + P.esc(c.n) + '</b><span class="sub">' + c.forma + ', ' + c.tax + (c.vat ? ', VAT' : '') + '</span>'; } },
+      { key: 'prac', label: 'Pracownicy', num: 1 },
+      { key: 'fee', label: 'Abonament', num: 1, html: function (c) { return P.zl(c.fee); } },
+      { key: 'pack', label: 'Pakiet', num: 1, html: function (c) { return c.pack + ' dok.'; } },
+      { key: 'avgDocs', label: 'Dokumenty', num: 1, html: function (c) { return c.avgDocs + '<span class="sub">' + (ov(c) ? '+' + (c.avgDocs - c.pack) + ' ponad pakiet' : 'w pakiecie') + '</span>'; } },
+      { key: 'per', label: 'Za dokument', num: 1, val: function (c) { return c.fee / Math.max(1, c.avgDocs + c.prac * 6); }, html: function (c) { return P.zl(c.fee / Math.max(1, c.avgDocs + c.prac * 6), 2); } },
+      { key: 'ok', label: 'Ocena', val: function (c) { return ov(c) ? 0 : (c.fee / Math.max(1, c.avgDocs + c.prac * 6) < 9 ? 1 : 2); }, html: function (c) {
+        if (ov(c)) return P.chip('Ponad pakiet', 'warn');
+        if (c.fee / Math.max(1, c.avgDocs + c.prac * 6) < 9) return P.chip('Za tani', 'warn');
+        return P.chip('W porządku', 'ok'); } },
+      { key: 'a', label: '', sort: false, html: function (c) { return ov(c) || c.fee / Math.max(1, c.avgDocs + c.prac * 6) < 9 ? '<button class="btn sm" data-up="' + c.id + '">Zaproponuj nowy abonament</button>' : ''; } }
+    ], { rows: CL, sortKey: 'ok' });
+    P.$$('[data-up]').forEach(function (b) { b.onclick = function () { proposal(CLI[b.getAttribute('data-up')]); }; });
+  };
+  function proposal(c) {
+    var units = c.avgDocs + c.prac * 6, fee = Math.ceil(units * 10 / 50) * 50, pack = Math.ceil(c.avgDocs * 1.15 / 10) * 10;
+    var body = '<dl class="kv"><dt>Teraz</dt><dd>' + P.zl(c.fee) + ' netto, pakiet ' + c.pack + ' dok.</dd><dt>Średnio</dt><dd>' + c.avgDocs + ' dokumentów i ' + c.prac + ' ' + P.plural(c.prac, 'pracownik', 'pracowników', 'pracowników') + '</dd></dl>' +
+      '<div class="form-grid" style="margin-top:14px"><label class="field"><span>Nowy abonament, zł netto</span><input id="pr-f" type="number" min="0" step="50" value="' + Math.max(fee, c.fee) + '"></label>' +
+      '<label class="field"><span>Nowy pakiet dokumentów</span><input id="pr-p" type="number" min="0" step="10" value="' + Math.max(pack, c.pack) + '"></label></div>' +
+      '<p class="small muted" style="margin-top:10px">Propozycja liczona po 10 zł za dokument, pracownik jak 6 dokumentów. Klient dostanie e-mail z nowymi warunkami od następnego miesiąca.</p>';
+    P.modal({ title: 'Nowy abonament', sub: P.esc(c.n), body: body, actions: [
+      { label: 'Anuluj', ghost: true },
+      { label: 'Wyślij propozycję', primary: true, onClick: function (close, d) { var f = +P.$('#pr-f', d).value, p = +P.$('#pr-p', d).value; c.fee = f; c.pack = p; close(); P.toast('Propozycja wysłana: ' + c.n.split(',')[0] + ', ' + P.zl(f) + ' za ' + p + ' dok.'); P.refresh(); } }
+    ] });
+  }
+
+  /* ---------- ZESPÓŁ ---------- */
+  P.views.zespol = function () {
+    var stats = TEAM.map(function (t) {
+      var mine = CL.filter(function (c) { return c.op === t.id; });
+      var pl = CL.filter(function (c) { return c.prac > 0; });
+      return { t: t, cl: t.id === 'do' ? pl.length : mine.length, recv: mine.reduce(function (s, c) { return s + c.recv; }, 0), booked: mine.reduce(function (s, c) { return s + c.booked; }, 0),
+        open: t.id === 'do' ? pl.filter(function (c) { return c.st.place < 3; }).length : mine.reduce(function (s, c) { return s + OB.filter(function (o) { return o.k !== 'place' && c.st[o.k] != null && c.st[o.k] < 3; }).length; }, 0),
+        emp: t.id === 'do' ? pl.reduce(function (s, c) { return s + c.prac; }, 0) : 0 };
+    });
+    var recv = stats.reduce(function (s, x) { return s + x.recv; }, 0), booked = stats.reduce(function (s, x) { return s + x.booked; }, 0);
+    P.strip(P.$('#ze-strip'), [
+      { label: 'Zaksięgowane', value: P.num(booked / Math.max(1, recv) * 100) + '%', note: booked + ' z ' + recv + ' dokumentów' },
+      { label: 'Otwarte rozliczenia', value: stats.reduce(function (s, x) { return s + x.open; }, 0), note: 'ZUS, zaliczki, JPK i płace w tym miesiącu' },
+      { label: 'Listy płac', value: stats[2].cl, note: P.n(stats[2].emp, 'pracownik', 'pracowników', 'pracowników') + ' u klientów' },
+      { label: 'Klienci na osobę', value: P.num(CL.length / 2, 0), note: 'księgowe, bez kadr' }
+    ]);
+    P.table(P.$('#ze-table'), [
+      { key: 'n', label: 'Osoba', sort: false, html: function (x) { return '<b>' + x.t.n + '</b><span class="sub">' + x.t.role + '</span>'; } },
+      { key: 'cl', label: 'Klienci', num: 1, sort: false, html: function (x) { return x.cl + (x.t.id === 'do' ? '<span class="sub">z pracownikami</span>' : ''); } },
+      { key: 'recv', label: 'Dokumenty', num: 1, sort: false, html: function (x) { return x.t.id === 'do' ? '<span class="muted">—</span>' : x.recv + '<span class="sub">' + x.booked + ' zaksięgowanych</span>'; } },
+      { key: 'open', label: 'Otwarte rozliczenia', num: 1, sort: false, html: function (x) { return x.open; } },
+      { key: 'next', label: 'Najbliżej', sort: false, html: function (x) {
+        var mine = x.t.id === 'do' ? CL.filter(function (c) { return c.prac > 0 && c.st.place < 3; }).map(function (c) { return [c, OB[0]]; }) : [];
+        if (x.t.id !== 'do') CL.filter(function (c) { return c.op === x.t.id; }).forEach(function (c) { OB.forEach(function (o) { if (o.k !== 'place' && c.st[o.k] != null && c.st[o.k] < 3) mine.push([c, o]); }); });
+        mine.sort(function (a, b) { return obDue(a[0], a[1]) - obDue(b[0], b[1]); });
+        return mine.length ? mine[0][1].full + ', ' + P.d(obDue(mine[0][0], mine[0][1])) + '<span class="sub">' + P.esc(mine[0][0].n.split(',')[0]) + '</span>' : '<span class="muted">nic otwartego</span>'; } }
+    ], { rows: stats });
+    P.bars(P.$('#ze-bars'), stats.filter(function (x) { return x.t.id !== 'do'; }).map(function (x) { var p = x.booked / Math.max(1, x.recv) * 100; return { label: x.t.n.split(' ')[0], value: p, text: x.booked + ' z ' + x.recv, tone: p < 50 && DOM > 10 ? 'warn' : '' }; }), { max: 100 });
+    P.table(P.$('#ze-sub'), [
+      { key: 'a', label: 'Nieobecna', sort: false }, { key: 'b', label: 'Zastępuje', sort: false }, { key: 'c', label: 'Kiedy', sort: false }
+    ], { rows: [{ a: 'Paulina Wrona', b: 'Iwona Kaczmarek', c: P.d(P.addDays(TODAY, 18)) + '–' + P.d(P.addDays(TODAY, 25)) }, { a: 'Dorota Sitek', b: 'Paulina Wrona (tylko listy płac)', c: P.d(P.addDays(TODAY, 40)) + '–' + P.d(P.addDays(TODAY, 44)) }] });
+  };
+
+  /* ---------- ROZLICZENIA BIURA ---------- */
+  P.views.rozliczenia = function () {
+    var unpaid = FV.filter(function (f) { return !f.paid; }), late = unpaid.filter(function (f) { return P.days(TODAY, f.due) < 0; });
+    var mrr = CL.reduce(function (s, c) { return s + c.fee; }, 0), extra = FV.filter(function (f) { return f.id.charAt(0) === 'g'; }).reduce(function (s, f) { return s + f.net; }, 0);
+    P.strip(P.$('#ro-strip'), [
+      { label: 'Przychód miesięczny', value: P.zl(mrr + extra), note: 'abonamenty i dopłaty, netto' },
+      { label: 'Niezapłacone', value: P.zl(unpaid.reduce(function (s, f) { return s + f.net * 1.23; }, 0)), note: P.n(unpaid.length, 'faktura', 'faktury', 'faktur') + ' brutto' },
+      { label: 'Po terminie', value: late.length, note: late.length ? Array.from(new Set(late.map(function (f) { return CLI[f.cl].n.split(',')[0]; }))).join(', ') : 'brak', tone: late.length ? 'bad' : 'ok' },
+      { label: 'Dopłaty ponad pakiet', value: P.zl(extra), note: 'w ostatnim miesiącu' }
+    ]);
+    P.table(P.$('#ro-table'), [
+      { key: 'nr', label: 'Faktura', html: function (f) { return '<b>' + f.nr + '</b><span class="sub">' + f.what + '</span>'; } },
+      { key: 'cl', label: 'Klient', val: function (f) { return CLI[f.cl].n; }, html: function (f) { return P.esc(CLI[f.cl].n); } },
+      { key: 'net', label: 'Netto', num: 1, html: function (f) { return P.zl(f.net); } },
+      { key: 'due', label: 'Termin', val: function (f) { return +f.due; }, html: function (f) { return P.d(f.due) + '<span class="sub">' + P.rel(f.due) + '</span>'; } },
+      { key: 'st', label: 'Status', val: function (f) { return f.paid ? 2 : (P.days(TODAY, f.due) < 0 ? 0 : 1); }, html: function (f) { return f.paid ? P.chip('Zapłacona ' + P.d(f.paid), 'ok') : (P.days(TODAY, f.due) < 0 ? P.chip('Po terminie', 'bad') : P.chip('Czeka', 'info')); } },
+      { key: 'a', label: '', sort: false, html: function (f) { return f.paid ? '' : '<div class="acts"><button class="btn sm ghost" data-fr="' + f.id + '">Przypomnij</button><button class="btn sm" data-fp="' + f.id + '">Zapłacona</button></div>'; } }
+    ], { rows: FV, sortKey: 'st' });
+    P.$$('[data-fp]').forEach(function (b) { b.onclick = function () { var f = FV.filter(function (x) { return x.id === b.getAttribute('data-fp'); })[0]; f.paid = TODAY; P.toast('Zaksięgowano wpłatę: ' + f.nr); P.refresh(); }; });
+    P.$$('[data-fr]').forEach(function (b) { b.onclick = function () { var f = FV.filter(function (x) { return x.id === b.getAttribute('data-fr'); })[0]; P.toast('Przypomnienie wysłane: ' + CLI[f.cl].n.split(',')[0]); }; });
+  };
+
+  P.initTabs();
+})();
+</script>
+</body>
+</html>

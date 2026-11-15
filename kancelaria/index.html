@@ -1,0 +1,648 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kancelaria adwokacka – panel demo</title>
+<meta name="description" content="Panel demo dla kancelarii adwokackiej: wokanda i terminy, sprawy, czas pracy ze stoperem, rozliczenia i faktury, sprawdzanie konfliktu interesów. Dane przykładowe.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
+<link rel="stylesheet" href="../assets/panel.css">
+<style>
+  /* Szyld w kolorze togi, pod nim zielony pas jak żabot adwokacki */
+  body {
+    --sign-bg: #191B1D; --sign-fg: #F1F2EF; --sign-sub: rgba(241, 242, 239, .72);
+    --sign-pattern: repeating-linear-gradient(90deg, rgba(255, 255, 255, .035) 0 1px, transparent 1px 18px);
+    --sign-band: linear-gradient(to bottom, #4FA172 0 2px, #2E7D4F 2px); --sign-band-h: 9px;
+    --accent: #2B6A47; --accent-ink: #FFFFFF; --accent-soft: #E3EFE7; --accent-line: #2B6A47;
+  }
+
+  /* Wokanda: lista rozpraw na dany dzień */
+  .wok { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-box); overflow: hidden; }
+  .wok-h { background: #191B1D; color: #F1F2EF; padding: 9px 16px; display: flex; justify-content: space-between; gap: 10px; align-items: baseline; border-bottom: 3px solid #2E7D4F; }
+  .wok-h b { font-size: 15px; font-weight: 680; }
+  .wok-h span { font-size: 13px; color: rgba(241, 242, 239, .72); }
+  .wok-row { display: grid; grid-template-columns: 62px minmax(0, 1fr) auto; gap: 14px; padding: 11px 16px; border-bottom: 1px solid var(--line-soft); align-items: start; }
+  .wok-row:last-child { border-bottom: 0; }
+  .wok-t { font-size: 20px; font-weight: 720; font-stretch: 90%; font-variant-numeric: tabular-nums; line-height: 1.2; }
+  .wok-sig { font-weight: 720; font-size: 14.5px; }
+  .wok-sub { font-size: 13px; color: var(--ink-2); }
+  .wok-who { text-align: right; font-size: 13px; display: flex; flex-direction: column; gap: 5px; align-items: flex-end; }
+  .wok-row.clash { background: var(--bad-soft); }
+
+  /* Stoper */
+  .timer { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: end; }
+  .clock { font-size: 44px; font-weight: 700; font-stretch: 86%; font-variant-numeric: tabular-nums; line-height: 1; letter-spacing: .01em; }
+  .clock.run { color: var(--accent-line); }
+  .timer .btn { padding: 11px 22px; font-size: 15px; }
+
+  /* Konflikt interesów */
+  .cf-q { display: flex; gap: 8px; flex-wrap: wrap; }
+  .cf-q input { flex: 1 1 280px; font-size: 17px; padding: 11px 13px; }
+  .verdict { border-radius: var(--r-box); padding: 12px 14px; font-size: 14.5px; border: 1px solid var(--line); background: var(--surface-2); }
+  .verdict.ok { background: var(--ok-soft); border-color: #B9DCC7; }
+  .verdict.warn { background: var(--warn-soft); border-color: #E9CF9D; }
+  .verdict.bad { background: var(--bad-soft); border-color: #EDB9B2; }
+  .hit { display: grid; grid-template-columns: 150px minmax(0, 1fr) auto; gap: 12px; padding: 10px 2px; border-bottom: 1px solid var(--line-soft); align-items: center; }
+  .hit:last-child { border-bottom: 0; }
+  .hit b { display: block; }
+  .hit span.sub { font-size: 12.5px; color: var(--ink-3); }
+
+  @media (max-width: 640px) {
+    .wok-row { grid-template-columns: 52px minmax(0, 1fr); }
+    .wok-who { grid-column: 2; align-items: flex-start; text-align: left; }
+    .hit { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+    .timer { grid-template-columns: minmax(0, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<header class="sign">
+  <div class="sign-top">
+    <a href="../index.html">Wszystkie panele</a>
+    <span class="demo-flag">Dane przykładowe</span>
+  </div>
+  <div class="sign-inner">
+    <div>
+      <h1>Twoja kancelaria adwokacka</h1>
+      <p class="sign-sub">Wokanda i terminy, sprawy, czas pracy, rozliczenia i konflikt interesów</p>
+    </div>
+    <div class="sign-meta"><strong id="sign-day"></strong><span id="sign-sub"></span></div>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="Moduły panelu">
+  <div class="tabs-inner" role="tablist">
+    <button class="tab" data-tab="terminy">Rozprawy i terminy</button>
+    <button class="tab" data-tab="sprawy">Sprawy</button>
+    <button class="tab" data-tab="czas">Czas pracy</button>
+    <button class="tab" data-tab="rozliczenia">Rozliczenia</button>
+    <button class="tab" data-tab="konflikt">Klienci i konflikt interesów</button>
+  </div>
+</nav>
+
+<main>
+  <!-- TERMINY -->
+  <section data-panel="terminy" class="stack">
+    <div id="te-strip"></div>
+    <div class="cols">
+      <div class="stack" id="te-wok"></div>
+      <div class="box">
+        <div class="box-h"><h2>Terminy procesowe</h2><button class="btn sm primary" id="te-add">Dodaj termin</button></div>
+        <div class="box-b flush" id="te-dead"></div>
+        <div class="box-b"><p class="small muted">Termin wpisuje prawnik na podstawie pisma z sądu. Panel go nie wylicza, tylko pilnuje i przypomina.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SPRAWY -->
+  <section data-panel="sprawy" class="stack">
+    <div id="sp-strip"></div>
+    <div class="box">
+      <div class="box-h"><div class="row"><input id="sp-q" class="inp" type="search" placeholder="Szukaj sprawy" aria-label="Szukaj sprawy: sygnatura, klient, druga strona"><div id="sp-filter"></div></div><p>Kliknij sprawę, żeby zobaczyć kartę</p></div>
+      <div class="box-b flush scroll-lg" id="sp-table"></div>
+    </div>
+  </section>
+
+  <!-- CZAS PRACY -->
+  <section data-panel="czas" class="stack">
+    <div id="cz-strip"></div>
+    <div class="cols">
+      <div class="box">
+        <div class="box-h"><h2>Stoper</h2><p>czas zaokrąglany w górę do 6 minut</p></div>
+        <div class="box-b">
+          <div class="form-grid">
+            <label class="field"><span>Kto</span><select id="tm-who"></select></label>
+            <label class="field"><span>Czynność</span><select id="tm-act"></select></label>
+            <label class="field full"><span>Sprawa</span><select id="tm-case"></select></label>
+          </div>
+          <div class="timer" style="margin-top:16px">
+            <div><div class="clock" id="tm-clock" aria-live="off">0:00:00</div><p class="small muted" id="tm-note" style="margin-top:6px">Stoper nie działa</p></div>
+            <div class="row"><button class="btn" id="tm-manual">Wpisz ręcznie</button><button class="btn primary" id="tm-go">Start</button></div>
+          </div>
+        </div>
+      </div>
+      <div class="box">
+        <div class="box-h"><h2>Godziny z 7 dni</h2><p>kreska: cel 30 h</p></div>
+        <div class="box-b"><div id="cz-bars"></div></div>
+      </div>
+    </div>
+    <div class="box">
+      <div class="box-h"><div id="cz-filter"></div><p>Ostatnie 7 dni</p></div>
+      <div class="box-b flush scroll-lg" id="cz-table"></div>
+    </div>
+  </section>
+
+  <!-- ROZLICZENIA -->
+  <section data-panel="rozliczenia" class="stack">
+    <div id="ro-strip"></div>
+    <div class="box">
+      <div class="box-h"><h2>Klienci i sposób rozliczenia</h2><p>godziny z ostatnich 30 dni, kwoty netto</p></div>
+      <div class="box-b flush" id="ro-table"></div>
+    </div>
+    <div class="box">
+      <div class="box-h"><h2>Faktury</h2><p>VAT 23%</p></div>
+      <div class="box-b flush" id="ro-fv"></div>
+    </div>
+  </section>
+
+  <!-- KONFLIKT -->
+  <section data-panel="konflikt" class="stack">
+    <div class="box">
+      <div class="box-h"><div><h2>Sprawdź konflikt interesów</h2><p>Przed przyjęciem nowego klienta lub sprawy. Szukamy też odmian nazwiska.</p></div></div>
+      <div class="box-b">
+        <div class="cf-q"><input id="cf-q" class="inp" type="search" value="Zalewski" aria-label="Imię i nazwisko albo nazwa firmy" placeholder="Imię i nazwisko albo nazwa firmy"><button class="btn primary" id="cf-save">Zapisz sprawdzenie w rejestrze</button></div>
+        <div id="cf-res" style="margin-top:14px"></div>
+      </div>
+    </div>
+    <div class="cols">
+      <div class="box">
+        <div class="box-h"><h2>Klienci</h2><p>przychód netto z 12 miesięcy</p></div>
+        <div class="box-b flush" id="cf-clients"></div>
+      </div>
+      <div class="box">
+        <div class="box-h"><h2>Rejestr sprawdzeń</h2></div>
+        <div class="box-b flush" id="cf-log"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <span>Panel demo. Klienci, sprawy, sygnatury i kwoty są wymyślone, zmiany znikają po odświeżeniu strony.</span>
+  <a href="../index.html">Zobacz pozostałe panele</a>
+</footer>
+
+<script src="../assets/panel.js"></script>
+<script>
+(function () {
+  'use strict';
+  var r = P.rng(5512);
+  var TODAY = P.today();
+  var VAT = 0.23;
+
+  /* ---------- Dane przykładowe ---------- */
+  var LAW = [
+    { id: 'kw', n: 'adw. Katarzyna Wolska', s: 'K. Wolska', role: 'partnerka', rate: 550, adw: true },
+    { id: 'mb', n: 'adw. Michał Banaś', s: 'M. Banaś', role: 'adwokat', rate: 450, adw: true },
+    { id: 'tr', n: 'adw. Tomasz Rejewski', s: 'T. Rejewski', role: 'adwokat', rate: 450, adw: true },
+    { id: 'jk', n: 'apl. adw. Julia Kurek', s: 'J. Kurek', role: 'aplikantka adwokacka', rate: 250, adw: false }
+  ];
+  var LW = {}; LAW.forEach(function (l) { LW[l.id] = l; });
+  /* model: h = godzinowo, abo = ryczałt miesięczny z limitem godzin, fix = ryczałt za sprawę */
+  var CLIENTS = [
+    { id: 'kal', n: 'Kalmet Konstrukcje sp. z o.o.', firm: 1, model: 'h', op: 'kw', since: 2021 },
+    { id: 'wer', n: 'Werona Meble sp. z o.o.', firm: 1, model: 'abo', fee: 4000, incl: 20, over: 350, op: 'mb', since: 2019 },
+    { id: 'zal', n: 'Marta Zalewska', firm: 0, model: 'fix', fee: 9000, before: 16, op: 'kw', since: 2026 },
+    { id: 'now', n: 'Krzysztof Nowicki', firm: 0, model: 'fix', fee: 4000, before: 6, bonus: 'premia 10% zasądzonej kwoty', op: 'tr', since: 2026 },
+    { id: 'kub', n: 'Roman Kubacki', firm: 0, model: 'fix', fee: 6000, before: 10, op: 'mb', since: 2026 },
+    { id: 'cze', n: 'Agnieszka i Paweł Czerwińscy', firm: 0, model: 'h', op: 'tr', since: 2025 },
+    { id: 'orv', n: 'Orvita Apteki sp. z o.o.', firm: 1, model: 'h', cap: 80000, capUsed: 30000, op: 'kw', since: 2022 },
+    { id: 'lum', n: 'Lumen Projekt sp. z o.o.', firm: 1, model: 'h', op: 'mb', since: 2024 },
+    { id: 'szu', n: 'Ewa Szulc', firm: 0, model: 'fix', fee: 5000, before: 8, op: 'tr', since: 2026 },
+    { id: 'wsp', n: 'Wspólnota Mieszkaniowa Lipowa 12', firm: 1, model: 'fix', fee: 3500, before: 4, op: 'kw', since: 2025 },
+    { id: 'lip', n: 'Tomasz Lipiński', firm: 0, model: 'fix', fee: 2500, before: 2, op: 'mb', since: 2026 }
+  ];
+  var CLI = {}; CLIENTS.forEach(function (c) { CLI[c.id] = c; });
+  var CASES = [
+    { id: 's1', w: 3, sig: 'X GC 233/26', court: 'Sąd Okręgowy, X Wydział Gospodarczy', cl: 'kal', vs: ['Hydrobud Serwis sp. z o.o.'], subj: 'Zapłata za roboty dodatkowe', wps: 186400, etap: 'I instancja', who: 'kw', team: ['kw', 'jk', 'tr'] },
+    { id: 's2', w: 0.6, sig: 'VI GC 1180/25', court: 'Sąd Rejonowy, VI Wydział Gospodarczy', cl: 'wer', vs: ['Studio Wnętrz Arkada Jan Sowa'], subj: 'Zapłata za dostawę mebli', wps: 42300, etap: 'I instancja', who: 'mb', team: ['mb', 'jk'] },
+    { id: 's3', w: 0.5, sig: 'XII C 618/26', court: 'Sąd Okręgowy, XII Wydział Cywilny Rodzinny', cl: 'zal', vs: ['Adam Zalewski'], subj: 'Rozwód, alimenty na dzieci', etap: 'I instancja', who: 'kw', team: ['kw'] },
+    { id: 's4', w: 0.35, sig: 'IV P 145/26', court: 'Sąd Rejonowy, IV Wydział Pracy', cl: 'now', vs: ['Logimar Transport sp. z o.o.'], subj: 'Przywrócenie do pracy, wynagrodzenie', wps: 38000, etap: 'I instancja', who: 'tr', team: ['tr', 'jk'] },
+    { id: 's5', w: 0.4, sig: 'II K 302/26', court: 'Sąd Rejonowy, II Wydział Karny', cl: 'kub', vs: ['Prokuratura Rejonowa'], vsRole: 'Oskarżyciel', subj: 'Obrona w sprawie o wypadek drogowy', etap: 'I instancja', who: 'mb', team: ['mb'] },
+    { id: 's6', w: 2.5, sig: 'I C 955/25', court: 'Sąd Rejonowy, I Wydział Cywilny', cl: 'cze', vs: ['Nova Park Deweloper sp. z o.o.'], subj: 'Wady mieszkania, obniżenie ceny', wps: 64000, etap: 'I instancja', who: 'tr', team: ['tr', 'jk'] },
+    { id: 's7', w: 3, sig: 'I ACa 412/26', court: 'Sąd Apelacyjny, I Wydział Cywilny', cl: 'orv', vs: ['Tarcza TU S.A.'], subj: 'Odszkodowanie z polisy', wps: 312000, etap: 'apelacja', who: 'kw', team: ['kw', 'mb'] },
+    { id: 's8', w: 1.5, sig: '', court: 'przed skierowaniem do sądu', cl: 'lum', vs: ['Fabryka Okien Dąbek sp.j.'], subj: 'Kary umowne za opóźnienie dostawy', wps: 28000, etap: 'przedsądowy', who: 'mb', team: ['mb', 'jk'] },
+    { id: 's9', w: 0.6, sig: 'Km 1240/26', court: 'Komornik sądowy', cl: 'kal', vs: ['Instal-Tech Marek Pawlak'], subj: 'Egzekucja zasądzonej kwoty', wps: 54800, etap: 'egzekucja', who: 'kw', team: ['jk'] },
+    { id: 's10', w: 0.35, sig: 'I Ns 230/26', court: 'Sąd Rejonowy, I Wydział Cywilny', cl: 'szu', vs: ['Piotr Szulc', 'Anna Domańska'], vsRole: 'Uczestnik postępowania', subj: 'Dział spadku', etap: 'I instancja', who: 'tr', team: ['tr'] },
+    { id: 's11', w: 0.6, sig: '', court: 'obsługa stała', cl: 'wer', vs: [], subj: 'Bieżąca obsługa: umowy, windykacja', etap: 'obsługa stała', who: 'mb', team: ['mb', 'jk'] },
+    { id: 's12', w: 0.3, sig: 'II SA 512/26', court: 'Wojewódzki Sąd Administracyjny', cl: 'wsp', vs: ['Prezydent Miasta'], vsRole: 'Organ', subj: 'Skarga na decyzję o warunkach zabudowy', etap: 'sąd administracyjny', who: 'kw', team: ['kw', 'jk'] },
+    { id: 's13', w: 0.25, sig: 'I C 1402/26', court: 'Sąd Rejonowy, I Wydział Cywilny', cl: 'lip', vs: ['Omega Fundusz Sekurytyzacyjny'], subj: 'Obrona przed pozwem o zapłatę', wps: 9800, etap: 'I instancja', who: 'mb', team: ['mb', 'jk'] }
+  ];
+  var CS = {}; CASES.forEach(function (c) { CS[c.id] = c; });
+  function partiesTxt(c) {
+    var cl = CLI[c.cl].n, vs = c.vs.join(', ');
+    if (!c.vs.length) return cl;
+    if (c.vsRole === 'Oskarżyciel') return 'Obrona: ' + cl + ', oskarżyciel: ' + vs;
+    if (c.vsRole === 'Uczestnik postępowania') return cl + ', z udziałem: ' + vs;
+    if (c.vsRole === 'Organ') return cl + ', organ: ' + vs;
+    return cl + ' przeciwko ' + vs;
+  }
+  function caseName(c) { return c.sig || CLI[c.cl].n.split(' sp.')[0]; }
+
+  function wd(n) { var d = TODAY; while (P.isWeekend(d)) d = P.addDays(d, 1); return n ? P.addWorkdays(d, n) : d; }
+  function weekday(d) { while (P.isWeekend(d)) d = P.addDays(d, 1); return d; }
+
+  /* rozprawy: [sprawa, dzień roboczy, godzina, sala, co] */
+  var HEAR = [
+    ['s10', 0, 14 * 60, '112', 'Rozprawa'],
+    ['s1', 1, 9 * 60 + 30, '214', 'Rozprawa, przesłuchanie świadków'],
+    ['s3', 1, 10 * 60 + 15, '7', 'Rozprawa'],
+    ['s4', 2, 11 * 60 + 15, '18', 'Rozprawa'],
+    ['s5', 3, 13 * 60, '3', 'Rozprawa główna'],
+    ['s6', 4, 9 * 60, '106', 'Przesłuchanie biegłego'],
+    ['s7', 5, 10 * 60 + 30, '2', 'Rozprawa apelacyjna'],
+    ['s2', 6, 12 * 60, '25', 'Rozprawa'],
+    ['s12', 8, 9 * 60, 'C', 'Rozprawa'],
+    ['s13', 9, 11 * 60, '109', 'Rozprawa']
+  ].map(function (h, i) { return { id: 'h' + i, cs: h[0], d: wd(h[1]), t: h[2], sala: h[3], what: h[4], sub: null }; });
+  /* terminy procesowe: [sprawa, termin (dni od dziś), czynność, doręczono (dni temu), kto] */
+  var DEAD = [
+    ['s2', 1, 'Wniosek o uzasadnienie wyroku częściowego', 6, 'mb'],
+    ['s13', 3, 'Odpowiedź na pozew', 11, 'mb'],
+    ['s10', 4, 'Zażalenie na postanowienie o kosztach', 3, 'tr'],
+    ['s8', 5, 'Mija termin z wezwania do zapłaty', 9, 'jk'],
+    ['s1', 7, 'Pismo przygotowawcze, zobowiązanie sądu', 8, 'kw'],
+    ['s4', 9, 'Wnioski dowodowe, lista świadków', 5, 'tr'],
+    ['s7', 11, 'Odpowiedź na apelację', 3, 'kw'],
+    ['s12', 14, 'Pismo uzupełniające do WSA', 1, 'kw']
+  ].map(function (x, i) { return { id: 'd' + i, cs: x[0], due: weekday(P.addDays(TODAY, x[1])), what: x[2], served: P.addDays(TODAY, -x[3]), who: x[4], done: false }; });
+
+  /* wpisy czasu pracy z 28 dni */
+  var ACTS = ['Analiza akt', 'Projekt pisma procesowego', 'Spotkanie z klientem', 'Korespondencja z klientem', 'Rozmowa telefoniczna', 'Przegląd dokumentów', 'Kwerenda orzecznictwa', 'Projekt umowy', 'Rozprawa', 'Dojazd do sądu'];
+  var TE = [], teN = 0;
+  function wpick(list) { var tot = list.reduce(function (s, c) { return s + c.w; }, 0), x = r() * tot; for (var i = 0; i < list.length; i++) { x -= list[i].w; if (x <= 0) return list[i]; } return list[list.length - 1]; }
+  for (var back = 27; back >= 0; back--) {
+    var day = P.addDays(TODAY, -back);
+    if (P.isWeekend(day)) continue;
+    LAW.forEach(function (l) {
+      var mine = CASES.filter(function (c) { return c.team.indexOf(l.id) >= 0; });
+      var left = (back === 0 ? 2.5 : 4.5 + r() * 2.5) * (l.id === 'jk' ? 1.1 : 1);
+      while (left > 0.25) {
+        var c = wpick(mine), h = Math.min(left, Math.round((0.3 + r() * 2.2) * 10) / 10);
+        var act = c.id === 's11' ? P.pick(r, ['Projekt umowy', 'Korespondencja z klientem', 'Przegląd dokumentów', 'Rozmowa telefoniczna']) : P.pick(r, ACTS.slice(0, 7));
+        TE.push({ id: 'e' + (teN++), d: day, who: l.id, cs: c.id, act: act, h: Math.round(h * 10) / 10, billed: back > 14 });
+        left -= h;
+      }
+    });
+  }
+  function teRate(e) { return CLI[CS[e.cs].cl].model === 'h' ? LW[e.who].rate : 0; }
+  function inDays(e, n) { return P.days(e.d, TODAY) < n; }
+
+  /* faktury: [klient, netto, wystawiona (dni temu), termin (dni od dziś), zapłacona (dni temu) lub null] */
+  var FV = [
+    ['kal', 18600, 32, -18, 20], ['wer', 4000, 32, -18, 17], ['orv', 14250, 30, -16, null], ['zal', 3000, 25, -11, 12],
+    ['cze', 3150, 20, -6, null], ['kub', 6000, 14, 0, null], ['lum', 2700, 9, 5, null], ['wer', 4000, 1, 13, null]
+  ].map(function (f, i) {
+    var iss = P.addDays(TODAY, -f[2]);
+    return { id: 'f' + i, cl: f[0], net: f[1], iss: iss, due: P.addDays(TODAY, f[3]), paid: f[4] != null ? P.addDays(TODAY, -f[4]) : null };
+  });
+  var fvSeq = {};
+  FV.forEach(function (f) { var k = (f.iss.getMonth() + 1) + '/' + f.iss.getFullYear(); fvSeq[k] = (fvSeq[k] || 40) + 1; f.nr = 'FV ' + fvSeq[k] + '/' + k; });
+  function fvNumber() { var k = (TODAY.getMonth() + 1) + '/' + TODAY.getFullYear(); fvSeq[k] = (fvSeq[k] || 0) + 1; return 'FV ' + fvSeq[k] + '/' + k; }
+
+  /* rejestr sprawdzeń konfliktu */
+  var LOG = [
+    { d: P.addDays(TODAY, -3), who: 'kw', q: 'Lipiński Tomasz', res: 'brak trafień' },
+    { d: P.addDays(TODAY, -12), who: 'tr', q: 'Szulc', res: 'brak trafień' }
+  ];
+
+  P.$('#sign-day').textContent = P.dayTitle(TODAY);
+  P.$('#sign-sub').textContent = LAW.length + ' osoby, ' + CASES.length + ' spraw w toku';
+
+  function whoChip(id) { return '<span title="' + P.esc(LW[id].n) + '">' + LW[id].s + '</span>'; }
+  function hearClash(h) {
+    return HEAR.filter(function (o) { return o !== h && +o.d === +h.d && (o.sub || CS[o.cs].who) === (h.sub || CS[h.cs].who) && Math.abs(o.t - h.t) < 120; })[0] || null;
+  }
+  function dleft(d) { return P.days(TODAY, d); }
+  function nextFor(c) {
+    var h = HEAR.filter(function (x) { return x.cs === c.id && dleft(x.d) >= 0; })[0];
+    var t = DEAD.filter(function (x) { return x.cs === c.id && !x.done; })[0];
+    var a = h ? { d: h.d, txt: h.what.split(',')[0] + ' ' + P.d(h.d) + ', ' + P.hm(h.t) } : null;
+    var b = t ? { d: t.due, txt: t.what + ' do ' + P.d(t.due) } : null;
+    if (a && b) return +a.d <= +b.d ? a : b;
+    return a || b;
+  }
+
+  /* ---------- ROZPRAWY I TERMINY ---------- */
+  P.views.terminy = function () {
+    var week = HEAR.filter(function (h) { return dleft(h.d) >= 0 && dleft(h.d) < 7; });
+    var clashes = HEAR.filter(function (h) { return hearClash(h); });
+    var open = DEAD.filter(function (d) { return !d.done; });
+    var d3 = open.filter(function (d) { return dleft(d.due) <= 3; });
+    P.strip(P.$('#te-strip'), [
+      { label: 'Rozprawy w 7 dni', value: week.length, note: HEAR.filter(function (h) { return dleft(h.d) === 0; }).map(function (h) { return 'dziś ' + P.hm(h.t) + ', ' + CS[h.cs].sig; }).join('; ') || 'dziś bez rozpraw' },
+      { label: 'Kolizje rozpraw', value: clashes.length / 2, note: clashes.length ? 'ta sama osoba w dwóch sądach, potrzebne zastępstwo' : 'brak', tone: clashes.length ? 'bad' : 'ok' },
+      { label: 'Terminy do 3 dni', value: d3.length, note: d3.map(function (d) { return d.what.split(',')[0].toLowerCase(); }).slice(0, 2).join(', ') || 'brak', tone: d3.length ? 'bad' : 'ok' },
+      { label: 'Terminy otwarte', value: open.length, note: 'najdalszy ' + (open.length ? P.d(open[open.length - 1].due) : '—') }
+    ]);
+    var days = [];
+    HEAR.filter(function (h) { return dleft(h.d) >= 0; }).forEach(function (h) { if (!days.some(function (d) { return +d === +h.d; })) days.push(h.d); });
+    P.$('#te-wok').innerHTML = days.slice(0, 7).map(function (d) {
+      var list = HEAR.filter(function (h) { return +h.d === +d; }).sort(function (a, b) { return a.t - b.t; });
+      var t = dleft(d) === 0 ? 'Dziś' : dleft(d) === 1 ? 'Jutro' : P.dow(d).charAt(0).toUpperCase() + P.dow(d).slice(1);
+      return '<div class="wok"><div class="wok-h"><b>' + t + ', ' + P.dLong(d) + '</b><span>' + P.n(list.length, 'rozprawa', 'rozprawy', 'rozpraw') + '</span></div>' + list.map(function (h) {
+        var c = CS[h.cs], cl = hearClash(h), who = h.sub || c.who;
+        return '<div class="wok-row' + (cl ? ' clash' : '') + '"><div class="wok-t">' + P.hm(h.t) + '</div>' +
+          '<div><div class="wok-sig">' + P.esc(c.sig) + ' <span style="font-weight:500">' + P.esc(h.what) + '</span></div>' +
+          '<div class="wok-sub">' + P.esc(c.court) + ', sala ' + P.esc(h.sala) + '</div>' +
+          '<div class="wok-sub">' + P.esc(partiesTxt(c)) + '</div></div>' +
+          '<div class="wok-who">' + (h.sub ? P.chip('Zastępstwo: ' + LW[h.sub].s, 'info') : '<span>' + LW[who].s + '</span>') +
+          (cl ? P.chip('Kolizja z ' + P.hm(cl.t), 'bad') + '<button class="btn sm" data-sub="' + h.id + '">Wyznacz zastępstwo</button>' : '') + '</div></div>';
+      }).join('') + '</div>';
+    }).join('');
+    P.$$('[data-sub]').forEach(function (b) { b.onclick = function () { substitute(HEAR.filter(function (h) { return h.id === b.getAttribute('data-sub'); })[0]); }; });
+
+    P.table(P.$('#te-dead'), [
+      { key: 'due', label: 'Termin', val: function (d) { return +d.due; }, html: function (d) { var n = dleft(d.due); return '<b>' + P.d(d.due) + '</b><span class="sub">' + (n === 0 ? 'dziś' : n === 1 ? 'jutro' : 'za ' + n + ' dni') + '</span>'; } },
+      { key: 'what', label: 'Czynność', html: function (d) { var c = CS[d.cs]; return P.esc(d.what) + '<span class="sub">' + P.esc(caseName(c)) + ', ' + LW[d.who].s + '</span>'; } },
+      { key: 'st', label: '', sort: false, html: function (d) {
+        if (d.done) return P.chip('Złożone', 'ok');
+        var n = dleft(d.due);
+        return '<div class="acts">' + (n <= 3 ? P.chip(n <= 1 ? 'Pilne' : 'Blisko', n <= 1 ? 'bad' : 'warn') : '') + '<button class="btn sm" data-done="' + d.id + '">Złożone</button></div>'; } }
+    ], { rows: DEAD, sortKey: 'due' });
+    P.$$('[data-done]').forEach(function (b) { b.onclick = function () { var d = DEAD.filter(function (x) { return x.id === b.getAttribute('data-done'); })[0]; d.done = true; P.toast('Oznaczono jako złożone: ' + d.what); P.refresh(); }; });
+  };
+  function substitute(h) {
+    var c = CS[h.cs];
+    var free = LAW.filter(function (l) { return l.adw && l.id !== c.who && !HEAR.some(function (o) { return o !== h && +o.d === +h.d && (o.sub || CS[o.cs].who) === l.id && Math.abs(o.t - h.t) < 120; }); });
+    var body = '<dl class="kv"><dt>Rozprawa</dt><dd>' + P.esc(c.sig) + ', ' + P.d(h.d) + ' ' + P.hm(h.t) + ', sala ' + P.esc(h.sala) + '</dd><dt>Sąd</dt><dd>' + P.esc(c.court) + '</dd><dt>Prowadzi</dt><dd>' + LW[c.who].n + '</dd></dl>' +
+      '<label class="field" style="margin-top:14px"><span>Zastępstwo</span><select id="sb-w">' + P.options(free.map(function (l) { return { v: l.id, l: l.n + ' (wolny o tej godzinie)' }; }), free[0] && free[0].id) + '</select></label>' +
+      '<p class="small muted" style="margin-top:10px">Panel zapisze zastępstwo i doda je do kalendarza zastępującego. Upoważnienie podpisuje prowadzący sprawę.</p>';
+    P.modal({ title: 'Wyznacz zastępstwo', sub: P.esc(CLI[c.cl].n), body: body, actions: [
+      { label: 'Anuluj', ghost: true },
+      { label: 'Wyznacz zastępstwo', primary: true, onClick: function (close, d) { var w = P.$('#sb-w', d).value; if (!w) return; h.sub = w; close(); P.toast('Zastępstwo: ' + LW[w].n + ', ' + c.sig + ' ' + P.d(h.d) + ' ' + P.hm(h.t)); P.refresh(); } }
+    ] });
+  }
+  P.$('#te-add').addEventListener('click', function () {
+    var body = '<div class="form-grid">' +
+      '<label class="field full"><span>Sprawa</span><select id="dd-c">' + P.options(CASES.map(function (c) { return { v: c.id, l: caseName(c) + ', ' + CLI[c.cl].n }; }), 's1') + '</select></label>' +
+      '<label class="field full"><span>Czynność</span><input id="dd-w" placeholder="Np. Apelacja od wyroku"></label>' +
+      '<label class="field"><span>Doręczono</span><input id="dd-s" type="date" value="' + P.iso(TODAY) + '"></label>' +
+      '<label class="field"><span>Termin upływa</span><input id="dd-d" type="date"></label>' +
+      '<label class="field"><span>Kto pilnuje</span><select id="dd-k">' + P.options(LAW.map(function (l) { return { v: l.id, l: l.n }; }), 'kw') + '</select></label>' +
+      '<p class="full small" id="dd-err" style="color:var(--bad)"></p></div>';
+    P.modal({ title: 'Dodaj termin procesowy', sub: 'Datę upływu terminu wpisz z pisma sądu', body: body, actions: [
+      { label: 'Anuluj', ghost: true },
+      { label: 'Dodaj termin', primary: true, onClick: function (close, d) {
+        var w = P.$('#dd-w', d).value.trim(), due = P.$('#dd-d', d).value;
+        if (!w) { P.$('#dd-err', d).textContent = 'Wpisz, jaka czynność ma termin.'; return; }
+        if (!due) { P.$('#dd-err', d).textContent = 'Wpisz datę upływu terminu.'; return; }
+        if (P.fromIso(due) < TODAY) { P.$('#dd-err', d).textContent = 'Ta data już minęła. Sprawdź datę z pisma.'; return; }
+        DEAD.push({ id: 'd' + DEAD.length, cs: P.$('#dd-c', d).value, due: P.fromIso(due), what: w, served: P.fromIso(P.$('#dd-s', d).value || P.iso(TODAY)), who: P.$('#dd-k', d).value, done: false });
+        close(); P.toast('Dodano termin: ' + w + ', ' + P.d(P.fromIso(due))); P.refresh();
+      } }
+    ] });
+  });
+
+  /* ---------- SPRAWY ---------- */
+  var spF = 'all', spQ = '';
+  P.views.sprawy = function () {
+    var court = CASES.filter(function (c) { return c.sig && c.etap !== 'egzekucja'; });
+    var wps = CASES.reduce(function (s, c) { return s + (c.wps || 0); }, 0);
+    var h30 = TE.filter(function (e) { return inDays(e, 30); }).reduce(function (s, e) { return s + e.h; }, 0);
+    P.strip(P.$('#sp-strip'), [
+      { label: 'Sprawy w toku', value: CASES.length, note: court.length + ' w sądzie, reszta poza sądem' },
+      { label: 'Łączna wartość sporów', value: P.zl(wps), note: 'sprawy z kwotą' },
+      { label: 'Godziny z 30 dni', value: P.num(h30, 1) + ' h', note: 'cały zespół' },
+      { label: 'Najbliższa rozprawa', value: (function () { var h = HEAR.filter(function (x) { return dleft(x.d) >= 0; })[0]; return h ? P.hm(h.t) : '—'; })(), note: (function () { var h = HEAR.filter(function (x) { return dleft(x.d) >= 0; })[0]; return h ? P.rel(h.d) + ', ' + CS[h.cs].sig : ''; })() }
+    ]);
+    P.seg(P.$('#sp-filter'), [{ v: 'all', l: 'Wszystkie' }].concat(LAW.filter(function (l) { return l.adw; }).map(function (l) { return { v: l.id, l: l.s }; })), spF, function (v) { spF = v; P.views.sprawy(); });
+    var q = P.$('#sp-q'); q.value = spQ; q.oninput = function () { spQ = q.value; P.views.sprawy(); q.focus(); };
+    var nq = norm(spQ);
+    var rows = CASES.filter(function (c) {
+      if (spF !== 'all' && c.who !== spF) return false;
+      if (nq && norm(c.sig + ' ' + CLI[c.cl].n + ' ' + c.vs.join(' ') + ' ' + c.subj).indexOf(nq) < 0) return false;
+      return true;
+    });
+    P.table(P.$('#sp-table'), [
+      { key: 'sig', label: 'Sygnatura', val: function (c) { return c.sig || 'ż'; }, html: function (c) { return '<b>' + (c.sig ? P.esc(c.sig) : '<span class="muted">bez sygnatury</span>') + '</b><span class="sub">' + P.esc(c.court) + '</span>'; } },
+      { key: 'cl', label: 'Klient i druga strona', val: function (c) { return CLI[c.cl].n; }, html: function (c) { return P.esc(CLI[c.cl].n) + '<span class="sub">' + (c.vs.length ? (c.vsRole ? c.vsRole.toLowerCase() : 'przeciwko') + ': ' + P.esc(c.vs.join(', ')) : 'bez drugiej strony') + '</span>'; } },
+      { key: 'subj', label: 'Przedmiot', html: function (c) { return P.esc(c.subj) + (c.wps ? '<span class="sub">wartość ' + P.zl(c.wps) + '</span>' : ''); } },
+      { key: 'etap', label: 'Etap', html: function (c) { return P.chip(c.etap, c.etap === 'apelacja' ? 'acc' : (c.etap === 'przedsądowy' || c.etap === 'obsługa stała' ? 'info' : '')); } },
+      { key: 'who', label: 'Zespół', val: function (c) { return LW[c.who].s; }, html: function (c) { return '<b>' + LW[c.who].s + '</b>' + (c.team.filter(function (t) { return t !== c.who; }).length ? '<span class="sub">z: ' + c.team.filter(function (t) { return t !== c.who; }).map(function (t) { return LW[t].s; }).join(', ') + '</span>' : ''); } },
+      { key: 'next', label: 'Najbliżej', val: function (c) { var n = nextFor(c); return n ? +n.d : null; }, html: function (c) { var n = nextFor(c); return n ? P.esc(n.txt) + '<span class="sub">' + P.rel(n.d) + '</span>' : '<span class="muted">brak terminów</span>'; } },
+      { key: 'h', label: 'Godziny, 30 dni', num: 1, val: function (c) { return hoursCase(c, 30); }, html: function (c) { return P.num(hoursCase(c, 30), 1); } }
+    ], { rows: rows, sortKey: 'next', onRow: openCase, empty: 'Brak spraw pasujących do wyszukiwania.' });
+  };
+  function hoursCase(c, n) { return TE.filter(function (e) { return e.cs === c.id && (!n || inDays(e, n)); }).reduce(function (s, e) { return s + e.h; }, 0); }
+  function openCase(c) {
+    var cl = CLI[c.cl], last = TE.filter(function (e) { return e.cs === c.id; }).slice(-5).reverse();
+    var hs = HEAR.filter(function (h) { return h.cs === c.id && dleft(h.d) >= 0; }), ds = DEAD.filter(function (d) { return d.cs === c.id && !d.done; });
+    var body = '<dl class="kv"><dt>Sąd</dt><dd>' + P.esc(c.court) + '</dd><dt>Klient</dt><dd>' + P.esc(cl.n) + '</dd><dt>' + P.esc(c.vsRole || 'Strona przeciwna') + '</dt><dd>' + (P.esc(c.vs.join(', ')) || '—') + '</dd>' +
+      '<dt>Przedmiot</dt><dd>' + P.esc(c.subj) + (c.wps ? ', ' + P.zl(c.wps) : '') + '</dd><dt>Rozliczenie</dt><dd>' + modelTxt(cl) + '</dd><dt>Czas łącznie</dt><dd>' + P.num(hoursCase(c), 1) + ' h w ostatnich 4 tygodniach</dd></dl>' +
+      '<h3 style="font-size:14.5px;margin:16px 0 6px">Najbliżej</h3>' +
+      (hs.length || ds.length ? '<ul style="margin:0;padding-left:18px">' + hs.map(function (h) { return '<li>' + P.esc(h.what) + ', ' + P.dy(h.d) + ' ' + P.hm(h.t) + ', sala ' + P.esc(h.sala) + '</li>'; }).join('') + ds.map(function (d) { return '<li>' + P.esc(d.what) + ', termin ' + P.dy(d.due) + '</li>'; }).join('') + '</ul>' : '<p class="muted">Brak zaplanowanych terminów.</p>') +
+      '<h3 style="font-size:14.5px;margin:16px 0 6px">Ostatnie czynności</h3><div class="tbl-wrap"><table class="tbl"><tbody>' +
+      last.map(function (e) { return '<tr><td>' + P.d(e.d) + '</td><td>' + LW[e.who].s + '</td><td>' + P.esc(e.act) + '</td><td class="num">' + P.num(e.h, 1) + ' h</td></tr>'; }).join('') + '</tbody></table></div>';
+    P.modal({ title: c.sig || 'Sprawa bez sygnatury', sub: P.esc(cl.n), body: body, wide: true, actions: [
+      { label: 'Zamknij', ghost: true },
+      { label: 'Wpisz czas do tej sprawy', primary: true, onClick: function (close) { close(); manualEntry(c.id); } }
+    ] });
+  }
+
+  /* ---------- CZAS PRACY ---------- */
+  var czF = 'all', RUN = null, tick = null;
+  function modelTxt(cl) {
+    if (cl.model === 'h') return 'godzinowo' + (cl.cap ? ', budżet ' + P.zl(cl.cap) : '');
+    if (cl.model === 'abo') return 'ryczałt ' + P.zl(cl.fee) + ' mies., do ' + cl.incl + ' h, potem ' + P.zl(cl.over) + '/h';
+    return 'ryczałt ' + P.zl(cl.fee) + ' za sprawę' + (cl.bonus ? ', ' + cl.bonus : '');
+  }
+  P.$('#tm-who').innerHTML = P.options(LAW.map(function (l) { return { v: l.id, l: l.n }; }), 'kw');
+  P.$('#tm-act').innerHTML = P.options(ACTS.map(function (a) { return { v: a, l: a }; }), 'Projekt pisma procesowego');
+  function caseOpts(who, cur) {
+    var list = CASES.slice().sort(function (a, b) { return (b.team.indexOf(who) >= 0) - (a.team.indexOf(who) >= 0); });
+    return P.options(list.map(function (c) { return { v: c.id, l: caseName(c) + ', ' + CLI[c.cl].n + (c.team.indexOf(who) >= 0 ? '' : ' (spoza zespołu)') }; }), cur);
+  }
+  P.$('#tm-case').innerHTML = caseOpts('kw', 's1');
+  P.$('#tm-who').addEventListener('change', function () { P.$('#tm-case').innerHTML = caseOpts(this.value, P.$('#tm-case').value); });
+  function fmt(sec) { var h = Math.floor(sec / 3600), m = Math.floor(sec / 60) % 60, s = sec % 60; return h + ':' + (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s; }
+  function drawClock() {
+    var sec = RUN ? Math.floor((Date.now() - RUN.start) / 1000) : 0;
+    var c = P.$('#tm-clock'); c.textContent = fmt(sec); c.classList.toggle('run', !!RUN);
+    P.$('#tm-note').textContent = RUN ? 'Liczy od ' + new Date(RUN.start).toTimeString().slice(0, 5) + ': ' + caseName(CS[RUN.cs]) + ', ' + RUN.act.toLowerCase() : 'Stoper nie działa';
+    P.$('#tm-go').textContent = RUN ? 'Stop i zapisz' : 'Start';
+  }
+  P.$('#tm-go').addEventListener('click', function () {
+    if (!RUN) {
+      RUN = { start: Date.now(), who: P.$('#tm-who').value, cs: P.$('#tm-case').value, act: P.$('#tm-act').value };
+      tick = setInterval(drawClock, 1000); drawClock(); P.toast('Stoper ruszył'); return;
+    }
+    var sec = (Date.now() - RUN.start) / 1000, h = Math.max(0.1, Math.ceil(sec / 360) / 10);
+    TE.push({ id: 'e' + (teN++), d: TODAY, who: RUN.who, cs: RUN.cs, act: RUN.act, h: h, billed: false });
+    P.toast('Zapisano ' + P.num(h, 1) + ' h: ' + caseName(CS[RUN.cs]));
+    RUN = null; clearInterval(tick); drawClock(); P.refresh();
+  });
+  function manualEntry(cs) {
+    var who = P.$('#tm-who').value;
+    var body = '<div class="form-grid">' +
+      '<label class="field"><span>Kto</span><select id="me-w">' + P.options(LAW.map(function (l) { return { v: l.id, l: l.n }; }), who) + '</select></label>' +
+      '<label class="field"><span>Dzień</span><input id="me-d" type="date" value="' + P.iso(TODAY) + '"></label>' +
+      '<label class="field full"><span>Sprawa</span><select id="me-c">' + caseOpts(who, cs || P.$('#tm-case').value) + '</select></label>' +
+      '<label class="field"><span>Czynność</span><select id="me-a">' + P.options(ACTS.map(function (a) { return { v: a, l: a }; }), 'Analiza akt') + '</select></label>' +
+      '<label class="field"><span>Czas w godzinach</span><input id="me-h" type="number" min="0.1" max="12" step="0.1" value="0.5"></label>' +
+      '<p class="full small" id="me-err" style="color:var(--bad)"></p></div>';
+    P.modal({ title: 'Wpisz czas pracy', body: body, actions: [
+      { label: 'Anuluj', ghost: true },
+      { label: 'Zapisz czas', primary: true, onClick: function (close, d) {
+        var h = Math.round(+P.$('#me-h', d).value * 10) / 10, dt = P.$('#me-d', d).value;
+        if (!(h >= 0.1 && h <= 12)) { P.$('#me-err', d).textContent = 'Wpisz czas od 0,1 do 12 godzin.'; return; }
+        if (!dt || P.fromIso(dt) > TODAY) { P.$('#me-err', d).textContent = 'Wybierz dzisiejszy albo wcześniejszy dzień.'; return; }
+        var e = { id: 'e' + (teN++), d: P.fromIso(dt), who: P.$('#me-w', d).value, cs: P.$('#me-c', d).value, act: P.$('#me-a', d).value, h: h, billed: false };
+        TE.push(e); close(); P.toast('Zapisano ' + P.num(h, 1) + ' h: ' + caseName(CS[e.cs])); P.refresh();
+      } }
+    ] });
+  }
+  P.$('#tm-manual').addEventListener('click', function () { manualEntry(); });
+  P.views.czas = function () {
+    drawClock();
+    var w7 = TE.filter(function (e) { return inDays(e, 7); });
+    var tot = w7.reduce(function (s, e) { return s + e.h; }, 0);
+    var hourly = w7.filter(function (e) { return teRate(e) > 0; }).reduce(function (s, e) { return s + e.h; }, 0);
+    var unb = TE.filter(function (e) { return !e.billed && teRate(e) > 0; });
+    P.strip(P.$('#cz-strip'), [
+      { label: 'Godziny z 7 dni', value: P.num(tot, 1) + ' h', note: 'cały zespół' },
+      { label: 'Na sprawach godzinowych', value: P.num(tot ? hourly / tot * 100 : 0) + '%', note: P.num(hourly, 1) + ' h do zafakturowania wprost' },
+      { label: 'Niezafakturowane godziny', value: P.zl(unb.reduce(function (s, e) { return s + e.h * teRate(e); }, 0)), note: P.num(unb.reduce(function (s, e) { return s + e.h; }, 0), 1) + ' h netto, sprawy godzinowe', tone: 'warn' },
+      { label: 'Dziś zapisane', value: P.num(TE.filter(function (e) { return +e.d === +TODAY; }).reduce(function (s, e) { return s + e.h; }, 0), 1) + ' h', note: RUN ? 'stoper liczy' : 'stoper zatrzymany' }
+    ]);
+    var by = LAW.map(function (l) { return { l: l, h: w7.filter(function (e) { return e.who === l.id; }).reduce(function (s, e) { return s + e.h; }, 0) }; });
+    P.bars(P.$('#cz-bars'), by.map(function (x) { return { label: x.l.s, value: x.h, text: P.num(x.h, 1) + ' h', tone: x.h >= 30 ? 'ok' : (x.h < 22 ? 'warn' : ''), mark: 30 / 40 * 100, markTitle: 'cel 30 h' }; }), { max: 40 });
+    P.seg(P.$('#cz-filter'), [{ v: 'all', l: 'Wszyscy' }].concat(LAW.map(function (l) { return { v: l.id, l: l.s }; })), czF, function (v) { czF = v; P.views.czas(); });
+    var rows = w7.filter(function (e) { return czF === 'all' || e.who === czF; });
+    P.table(P.$('#cz-table'), [
+      { key: 'd', label: 'Dzień', val: function (e) { return +e.d * 1000 + TE.indexOf(e); }, html: function (e) { return P.dowS(e.d) + ' ' + P.d(e.d); } },
+      { key: 'who', label: 'Kto', val: function (e) { return LW[e.who].s; }, html: function (e) { return LW[e.who].s; } },
+      { key: 'cs', label: 'Sprawa', val: function (e) { return caseName(CS[e.cs]); }, html: function (e) { var c = CS[e.cs]; return '<b>' + P.esc(caseName(c)) + '</b><span class="sub">' + P.esc(CLI[c.cl].n) + '</span>'; } },
+      { key: 'act', label: 'Czynność' },
+      { key: 'h', label: 'Czas', num: 1, html: function (e) { return P.num(e.h, 1) + ' h'; } },
+      { key: 'v', label: 'Kwota netto', num: 1, val: function (e) { return e.h * teRate(e); }, html: function (e) { var t = teRate(e); return t ? P.zl(e.h * t) + '<span class="sub">' + P.zl(t) + '/h</span>' : '<span class="muted">w ryczałcie</span>'; } },
+      { key: 'b', label: 'Faktura', val: function (e) { return teRate(e) ? (e.billed ? 2 : 1) : 3; }, html: function (e) { return teRate(e) ? (e.billed ? P.chip('Zafakturowane', 'ok') : P.chip('Do faktury', 'warn')) : P.chip('Ryczałt', ''); } }
+    ], { rows: rows, sortKey: 'd', sortDir: -1 });
+  };
+
+  /* ---------- ROZLICZENIA ---------- */
+  function cliStats(cl) {
+    var mine = TE.filter(function (e) { return CS[e.cs].cl === cl.id; });
+    var h30 = mine.filter(function (e) { return inDays(e, 30); }).reduce(function (s, e) { return s + e.h; }, 0);
+    var unb = mine.filter(function (e) { return !e.billed; });
+    var o = { h30: h30, unbH: 0, unbV: 0, eff: null };
+    if (cl.model === 'h') { o.unbH = unb.reduce(function (s, e) { return s + e.h; }, 0); o.unbV = unb.reduce(function (s, e) { return s + e.h * LW[e.who].rate; }, 0); }
+    if (cl.model === 'abo') { var over = Math.max(0, h30 - cl.incl - (cl.overBilled || 0)); o.unbH = over; o.unbV = over * cl.over; o.eff = (cl.fee + Math.max(0, h30 - cl.incl) * cl.over) / Math.max(1, h30); }
+    if (cl.model === 'fix') { var all = mine.reduce(function (s, e) { return s + e.h; }, 0) + cl.before; o.eff = cl.fee / all; o.allH = all; }
+    return o;
+  }
+  P.views.rozliczenia = function () {
+    var st = CLIENTS.map(function (c) { return { c: c, s: cliStats(c) }; });
+    var toBill = st.reduce(function (s, x) { return s + x.s.unbV; }, 0);
+    var unpaid = FV.filter(function (f) { return !f.paid; });
+    var late = unpaid.filter(function (f) { return dleft(f.due) < 0; });
+    var weak = st.filter(function (x) { return x.c.model === 'fix' && x.s.eff < 250; });
+    P.strip(P.$('#ro-strip'), [
+      { label: 'Do zafakturowania', value: P.zl(toBill), note: 'godziny i nadwyżki ponad ryczałt, netto', tone: toBill ? 'warn' : 'ok' },
+      { label: 'Faktury niezapłacone', value: P.zl(unpaid.reduce(function (s, f) { return s + f.net * (1 + VAT); }, 0)), note: P.n(unpaid.length, 'faktura', 'faktury', 'faktur') + ' brutto' },
+      { label: 'Po terminie', value: P.zl(late.reduce(function (s, f) { return s + f.net * (1 + VAT); }, 0)), note: late.map(function (f) { return CLI[f.cl].n.split(' sp.')[0]; }).join(', ') || 'brak', tone: late.length ? 'bad' : 'ok' },
+      { label: 'Ryczałty poniżej 250 zł/h', value: weak.length, note: weak.length ? 'czas pracy zjada ryczałt' : 'wszystkie się bronią', tone: weak.length ? 'warn' : 'ok' }
+    ]);
+    P.table(P.$('#ro-table'), [
+      { key: 'n', label: 'Klient', val: function (x) { return x.c.n; }, html: function (x) { return '<b>' + P.esc(x.c.n) + '</b><span class="sub">' + modelTxt(x.c) + '</span>'; } },
+      { key: 'h', label: 'Godziny', num: 1, val: function (x) { return x.s.h30; }, html: function (x) { return P.num(x.s.h30, 1) + ' h' + (x.c.model === 'abo' ? '<span class="sub">limit ' + x.c.incl + ' h</span>' : ''); } },
+      { key: 'u', label: 'Do faktury', num: 1, val: function (x) { return x.s.unbV; }, html: function (x) {
+        if (x.c.model === 'fix') return '<span class="muted">ryczałt</span>';
+        return x.s.unbV ? '<b>' + P.zl(x.s.unbV) + '</b><span class="sub">' + P.num(x.s.unbH, 1) + ' h' + (x.c.model === 'abo' ? ' ponad limit' : '') + '</span>' : '<span class="muted">nic</span>'; } },
+      { key: 'e', label: 'Stawka efektywna', num: 1, val: function (x) { return x.s.eff; }, html: function (x) {
+        if (x.s.eff == null) return '<span class="muted">—</span>';
+        return P.zl(x.s.eff) + '/h<span class="sub">' + (x.c.model === 'fix' ? P.num(x.s.allH, 1) + ' h od początku sprawy' : 'z nadwyżką') + '</span>'; } },
+      { key: 's', label: 'Ocena', sort: false, html: function (x) {
+        if (x.c.cap) { var used = x.c.capUsed + x.s.unbV; return P.prog(used / x.c.cap * 100, used / x.c.cap > 0.8 ? 'warn' : '', P.num(used / x.c.cap * 100) + '% budżetu'); }
+        if (x.s.eff == null) return '';
+        return x.s.eff < 250 ? P.chip('Ryczałt się nie opłaca', 'warn') : P.chip('W porządku', 'ok'); } },
+      { key: 'a', label: '', sort: false, html: function (x) { return x.s.unbV ? '<button class="btn sm" data-inv="' + x.c.id + '">Wystaw fakturę</button>' : ''; } }
+    ], { rows: st, sortKey: 'u', sortDir: -1 });
+    P.$$('[data-inv]').forEach(function (b) { b.onclick = function () { invoice(CLI[b.getAttribute('data-inv')]); }; });
+    P.table(P.$('#ro-fv'), [
+      { key: 'nr', label: 'Numer', val: function (f) { return +f.iss; }, html: function (f) { return '<b>' + f.nr + '</b><span class="sub">wystawiona ' + P.d(f.iss) + '</span>'; } },
+      { key: 'cl', label: 'Klient', val: function (f) { return CLI[f.cl].n; }, html: function (f) { return P.esc(CLI[f.cl].n); } },
+      { key: 'net', label: 'Netto', num: 1, html: function (f) { return P.zl(f.net); } },
+      { key: 'gross', label: 'Brutto', num: 1, val: function (f) { return f.net; }, html: function (f) { return P.zl(f.net * (1 + VAT)); } },
+      { key: 'due', label: 'Termin', val: function (f) { return +f.due; }, html: function (f) { return P.d(f.due) + '<span class="sub">' + P.rel(f.due) + '</span>'; } },
+      { key: 'st', label: 'Status', val: function (f) { return f.paid ? 2 : (dleft(f.due) < 0 ? 0 : 1); }, html: function (f) { return f.paid ? P.chip('Zapłacona ' + P.d(f.paid), 'ok') : (dleft(f.due) < 0 ? P.chip('Po terminie ' + P.n(-dleft(f.due), 'dzień', 'dni', 'dni'), 'bad') : P.chip('Czeka na wpłatę', 'info')); } },
+      { key: 'a', label: '', sort: false, html: function (f) { return f.paid ? '' : '<div class="acts">' + (dleft(f.due) < 0 ? '<button class="btn sm ghost" data-rem="' + f.id + '">Przypomnij</button>' : '') + '<button class="btn sm" data-paid="' + f.id + '">Zapłacona</button></div>'; } }
+    ], { rows: FV, sortKey: 'st' });
+    P.$$('[data-paid]').forEach(function (b) { b.onclick = function () { var f = FV.filter(function (x) { return x.id === b.getAttribute('data-paid'); })[0]; f.paid = TODAY; P.toast('Zaksięgowano wpłatę: ' + f.nr); P.refresh(); }; });
+    P.$$('[data-rem]').forEach(function (b) { b.onclick = function () { var f = FV.filter(function (x) { return x.id === b.getAttribute('data-rem'); })[0]; P.toast('Przypomnienie o płatności wysłane: ' + CLI[f.cl].n); }; });
+  };
+  function invoice(cl) {
+    var s = cliStats(cl), unb = TE.filter(function (e) { return CS[e.cs].cl === cl.id && !e.billed; });
+    var lines = cl.model === 'abo' ? [['Godziny ponad limit ryczałtu, ' + P.num(s.unbH, 1) + ' h × ' + P.zl(cl.over), s.unbV]] :
+      LAW.map(function (l) { var h = unb.filter(function (e) { return e.who === l.id; }).reduce(function (a, e) { return a + e.h; }, 0); return h ? [l.n + ', ' + P.num(h, 1) + ' h × ' + P.zl(l.rate), h * l.rate] : null; }).filter(Boolean);
+    var body = '<div class="tbl-wrap"><table class="tbl"><tbody>' + lines.map(function (x) { return '<tr><td>' + P.esc(x[0]) + '</td><td class="num">' + P.zl(x[1]) + '</td></tr>'; }).join('') +
+      '</tbody><tfoot><tr><td>Netto</td><td class="num">' + P.zl(s.unbV) + '</td></tr><tr><td>VAT 23%</td><td class="num">' + P.zl(s.unbV * VAT) + '</td></tr><tr><td>Brutto</td><td class="num">' + P.zl(s.unbV * (1 + VAT)) + '</td></tr></tfoot></table></div>' +
+      '<p class="small muted" style="margin-top:10px">Do faktury dołączymy zestawienie czynności z datami i czasem.</p>';
+    P.modal({ title: 'Faktura: ' + cl.n, sub: modelTxt(cl), body: body, actions: [
+      { label: 'Anuluj', ghost: true },
+      { label: 'Wystaw fakturę', primary: true, onClick: function (close) {
+        var f = { id: 'f' + FV.length, cl: cl.id, net: Math.round(s.unbV), iss: TODAY, due: P.addDays(TODAY, 14), paid: null, nr: fvNumber() };
+        FV.push(f);
+        if (cl.model === 'abo') cl.overBilled = (cl.overBilled || 0) + s.unbH; else unb.forEach(function (e) { e.billed = true; });
+        if (cl.cap) cl.capUsed += s.unbV;
+        close(); P.toast('Wystawiono ' + f.nr + ' dla ' + cl.n + ', ' + P.zl(f.net * (1 + VAT)) + ' brutto'); P.refresh();
+      } }
+    ] });
+  }
+
+  /* ---------- KLIENCI I KONFLIKT INTERESÓW ---------- */
+  function norm(s) { return String(s || '').toLowerCase().replace(/ł/g, 'l').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim(); }
+  var PARTIES = [];
+  CLIENTS.forEach(function (c) { PARTIES.push({ n: c.n, role: 'Klient kancelarii', tone: 'info', cases: CASES.filter(function (s) { return s.cl === c.id; }), cl: c }); });
+  CASES.forEach(function (s) { s.vs.forEach(function (v) { PARTIES.push({ n: v, role: s.vsRole || 'Strona przeciwna', tone: s.vsRole ? '' : 'warn', cases: [s] }); }); });
+  function search(q) {
+    var qt = norm(q).split(' ').filter(function (t) { return t.length >= 3; });
+    if (!qt.length) return null;
+    return PARTIES.filter(function (p) {
+      var nt = norm(p.n).split(' ');
+      return qt.every(function (t) { return nt.some(function (x) { return x.indexOf(t) === 0 || (t.length >= 5 && x.indexOf(t.slice(0, t.length - 2)) === 0); }); });
+    });
+  }
+  function verdict(hits) {
+    if (hits == null) return { tone: '', txt: 'Wpisz co najmniej 3 litery nazwiska albo nazwy firmy.' };
+    if (!hits.length) return { tone: 'ok', txt: 'Brak trafień w bazie kancelarii. Można przyjąć zlecenie, jeśli nic innego nie stoi na przeszkodzie.', short: 'brak trafień' };
+    var opp = hits.filter(function (h) { return h.tone === 'warn'; }), cli = hits.filter(function (h) { return h.tone === 'info'; });
+    if (opp.length && cli.length) return { tone: 'bad', txt: 'Ta osoba lub firma występuje u nas i jako klient, i jako strona przeciwna. Sprawdź dokładnie, zanim przyjmiesz zlecenie.', short: 'klient i strona przeciwna' };
+    if (opp.length) return { tone: 'bad', txt: 'Trafienie jako strona przeciwna w sprawie, którą prowadzimy. Przyjęcie zlecenia od tej osoby lub firmy grozi konfliktem interesów.', short: 'strona przeciwna' };
+    if (cli.length) return { tone: 'warn', txt: 'To nasz klient. Sprawdź, czy nowa sprawa nie jest skierowana przeciwko niemu.', short: 'klient kancelarii' };
+    return { tone: 'warn', txt: 'Trafienie jako uczestnik lub organ w prowadzonej sprawie. Sprawdź powiązania.', short: 'uczestnik sprawy' };
+  }
+  function drawSearch() {
+    var q = P.$('#cf-q').value, hits = search(q), v = verdict(hits);
+    P.$('#cf-res').innerHTML = '<div class="verdict ' + v.tone + '"><b>' + (hits && hits.length ? P.n(hits.length, 'trafienie', 'trafienia', 'trafień') + '. ' : '') + '</b>' + P.esc(v.txt) + '</div>' +
+      (hits && hits.length ? '<div style="margin-top:8px">' + hits.map(function (h) {
+        return '<div class="hit"><div>' + P.chip(h.role, h.tone) + '</div><div><b>' + P.esc(h.n) + '</b><span class="sub">' + h.cases.map(function (c) { return (c.sig || 'bez sygnatury') + ', ' + c.subj.toLowerCase() + (h.cl ? '' : ', klient: ' + CLI[c.cl].n); }).map(P.esc).join('; ') + '</span></div>' +
+          '<div class="small muted">' + (h.cases[0] ? 'prowadzi ' + LW[h.cases[0].who].s : '') + '</div></div>';
+      }).join('') + '</div>' : '') + '<p class="small muted" style="margin-top:10px">Wynik to podpowiedź z bazy kancelarii. Decyzję o przyjęciu sprawy podejmuje adwokat.</p>';
+    return v;
+  }
+  P.$('#cf-q').addEventListener('input', drawSearch);
+  P.$('#cf-save').addEventListener('click', function () {
+    var q = P.$('#cf-q').value.trim(), v = drawSearch();
+    if (q.length < 3) { P.toast('Wpisz co najmniej 3 litery'); return; }
+    LOG.unshift({ d: TODAY, who: 'kw', q: q, res: v.short || 'brak trafień' });
+    P.toast('Zapisano w rejestrze: ' + q + ', ' + (v.short || 'brak trafień')); P.views.konflikt();
+  });
+  P.views.konflikt = function () {
+    drawSearch();
+    P.table(P.$('#cf-clients'), [
+      { key: 'n', label: 'Klient', html: function (c) { return '<b>' + P.esc(c.n) + '</b><span class="sub">' + (c.firm ? 'firma' : 'osoba prywatna') + ', klient od ' + c.since + '</span>'; } },
+      { key: 'cases', label: 'Sprawy', num: 1, val: function (c) { return CASES.filter(function (s) { return s.cl === c.id; }).length; }, html: function (c) { return CASES.filter(function (s) { return s.cl === c.id; }).length; } },
+      { key: 'op', label: 'Opiekun', val: function (c) { return LW[c.op].s; }, html: function (c) { return LW[c.op].s; } },
+      { key: 'rev', label: 'Przychód', num: 1, val: revenue, html: function (c) { return P.zl(revenue(c)); } }
+    ], { rows: CLIENTS, sortKey: 'rev', sortDir: -1 });
+    P.table(P.$('#cf-log'), [
+      { key: 'd', label: 'Dzień', sort: false, html: function (l) { return P.d(l.d); } },
+      { key: 'q', label: 'Sprawdzono', sort: false, html: function (l) { return P.esc(l.q) + '<span class="sub">' + LW[l.who].s + '</span>'; } },
+      { key: 'res', label: 'Wynik', sort: false, html: function (l) { return P.chip(l.res, l.res === 'brak trafień' ? 'ok' : 'warn'); } }
+    ], { rows: LOG });
+  };
+  var REV = {}; CLIENTS.forEach(function (c) {
+    var v30 = TE.filter(function (e) { return CS[e.cs].cl === c.id && inDays(e, 30); }).reduce(function (s, e) { return s + e.h * LW[e.who].rate; }, 0);
+    REV[c.id] = Math.round((c.model === 'abo' ? c.fee * 12 + P.int(r, 4, 12) * 1000 : (c.model === 'fix' ? c.fee : v30 * (c.since < 2026 ? 9 : 4))) / 100) * 100;
+  });
+  function revenue(c) { return REV[c.id]; }
+
+  P.initTabs();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+# Local / private files — do not commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.sqlite
+*.db
+node_modules/
+.DS_Store
+Thumbs.db

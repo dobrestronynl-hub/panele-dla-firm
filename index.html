@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Przykładowe panele dla firm | DobreStrony.nl</title>
+<meta name="description" content="Panele demo dla 11 branż: przedszkola, budowy, ogrodzenia, salony fryzjerskie, zakłady pogrzebowe, kancelarie, biura rachunkowe, warsztaty, zarządcy nieruchomości, serwisy klimatyzacji i PV, pensjonaty. Działają w przeglądarce na danych przykładowych.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
+<link rel="stylesheet" href="assets/panel.css">
+<style>
+  /* Galeria: tablice branżowe są głównym elementem strony */
+  .top { max-width: 1360px; margin: 0 auto; padding: 44px 24px 10px; }
+  .brand { font-size: 14px; color: var(--ink-3); margin-bottom: 18px; }
+  .top h1 { font-size: clamp(36px, 6vw, 68px); font-weight: 780; font-stretch: 118%; letter-spacing: -0.015em; line-height: .98; }
+  .top p { font-size: 17px; color: var(--ink-2); max-width: 62ch; margin-top: 16px; }
+
+  .demos { max-width: 1360px; margin: 0 auto; padding: 28px 24px 12px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+  .demo { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-box); overflow: hidden; display: flex; flex-direction: column; }
+  .demo .sign { padding: 20px 22px calc(20px + var(--sign-band-h)); }
+  .demo .sign h2 { font-size: 27px; font-weight: 760; font-stretch: 114%; line-height: 1.05; }
+  .demo .sign p { margin-top: 6px; font-size: 14px; color: var(--sign-sub); }
+  .shot { display: block; border-bottom: 1px solid var(--line); background: var(--surface-2); }
+  .shot img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; object-position: top left; }
+  .demo-b { padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 14px; flex: 1; }
+  .demo-b > p { font-size: 15px; color: var(--ink-2); }
+  .mods { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line-soft); }
+  .mods li { border-bottom: 1px solid var(--line-soft); }
+  .mods a { display: flex; justify-content: space-between; gap: 12px; padding: 8px 2px; text-decoration: none; font-size: 14px; }
+  .mods a span { color: var(--ink-3); font-size: 13px; text-align: right; }
+  .mods a:hover { color: var(--accent-line); }
+  .demo-b .btn { align-self: flex-start; margin-top: auto; padding: 9px 16px; font-size: 14.5px; }
+
+  .kid { --sign-bg: #2C4A41; --sign-fg: #F3F0E3; --sign-sub: rgba(243, 240, 227, .78); --sign-pattern: radial-gradient(rgba(255, 255, 255, .045) 1px, transparent 1.6px); --sign-band: linear-gradient(#B98B5C, #8E663F); --sign-band-h: 9px; --accent: #2F6B57; --accent-line: #2F6B57; }
+  .kid .sign { background-size: 7px 7px; }
+  .bud { --sign-bg: #F2C200; --sign-fg: #17191B; --sign-sub: rgba(23, 25, 27, .74); --sign-band: repeating-linear-gradient(-45deg, #17191B 0 14px, #F2C200 14px 28px); --sign-band-h: 10px; --accent: #1E2226; --accent-ink: #F2C200; --accent-line: #7A5A00; }
+  .ogr { --sign-bg: #383E42; --sign-fg: #EEF1F3; --sign-sub: rgba(238, 241, 243, .76); --sign-pattern: linear-gradient(90deg, rgba(255, 255, 255, .075) 2px, transparent 2px), linear-gradient(0deg, rgba(255, 255, 255, .075) 2px, transparent 2px); --sign-band: linear-gradient(#DCE1E5, #9AA3AA); --sign-band-h: 7px; --accent: #245C43; --accent-line: #245C43; }
+  .ogr .sign { background-size: 22px 100%, 100% 52px; }
+  .fry { --sign-bg: #26202D; --sign-fg: #F6F1EA; --sign-sub: rgba(246, 241, 234, .74); --sign-band: repeating-linear-gradient(-45deg, #C8323C 0 12px, #F6F1EA 12px 24px, #2B4C8C 24px 36px, #F6F1EA 36px 48px); --sign-band-h: 10px; --accent: #9C2A3B; --accent-line: #9C2A3B; }
+  .pog { --sign-bg: #1F242A; --sign-fg: #EDEEF0; --sign-sub: rgba(237, 238, 240, .72); --accent: #3D4A61; --accent-line: #3D4A61; }
+  .pog .sign::before { content: ""; position: absolute; inset: 7px; pointer-events: none; border: 1px solid rgba(237, 238, 240, .26); box-shadow: 0 0 0 3px #1F242A, 0 0 0 4px rgba(237, 238, 240, .26); }
+  .rach { --sign-bg: #1E2A3E; --sign-fg: #EEF1F6; --sign-sub: rgba(238, 241, 246, .74); --sign-pattern: linear-gradient(90deg, transparent 10px, rgba(222, 98, 98, .6) 10px 12px, transparent 12px), repeating-linear-gradient(to bottom, transparent 0 25px, rgba(255, 255, 255, .07) 25px 26px); --sign-band: linear-gradient(to bottom, #DE6262 0 2px, transparent 2px 4px, #DE6262 4px 6px); --sign-band-h: 6px; --accent: #2E5597; --accent-line: #2E5597; }
+  .war { --sign-bg: #2A2D31; --sign-fg: #F1F2F3; --sign-sub: rgba(241, 242, 243, .72); --sign-pattern: repeating-linear-gradient(45deg, rgba(255, 255, 255, .05) 0 2px, transparent 2px 13px), repeating-linear-gradient(-45deg, rgba(255, 255, 255, .05) 0 2px, transparent 2px 13px); --sign-band: linear-gradient(#E0661F, #C4561A); --sign-band-h: 7px; --accent: #A9461A; --accent-line: #A9461A; }
+  .zar { --sign-bg: #24343C; --sign-fg: #EEF2F3; --sign-sub: rgba(238, 242, 243, .74); --sign-pattern: linear-gradient(to bottom, #24343C 0 12px, transparent 12px 32px, #24343C 32px), linear-gradient(90deg, transparent 0 16px, rgba(255, 255, 255, .075) 16px 32px, transparent 32px); --sign-band: linear-gradient(#B9C3C7, #8D9AA0); --sign-band-h: 7px; --accent: #2B6878; --accent-line: #2B6878; }
+  .zar .sign { background-size: 100% 44px, 44px 100%; }
+  .ser { --sign-bg: #17304D; --sign-fg: #EEF3F8; --sign-sub: rgba(238, 243, 248, .74); --sign-pattern: linear-gradient(90deg, rgba(255, 255, 255, .09) 1px, transparent 1px), linear-gradient(rgba(255, 255, 255, .09) 1px, transparent 1px); --sign-band: linear-gradient(90deg, #4FB3D9, #9FD0D8 45%, #F2C14E 70%, #E9962F); --sign-band-h: 7px; --accent: #1D659C; --accent-line: #1D659C; }
+  .ser .sign { background-size: 36px 36px, 36px 36px; }
+  .pen { --sign-bg: #3A2A21; --sign-fg: #F4EDE4; --sign-sub: rgba(244, 237, 228, .74); --sign-pattern: repeating-linear-gradient(to bottom, transparent 0 25px, rgba(0, 0, 0, .28) 25px 27px); --sign-band: repeating-linear-gradient(90deg, #A9402B 0 12px, #E9DCC6 12px 15px, #2F5D4A 15px 21px, #E9DCC6 21px 24px); --sign-band-h: 9px; --accent: #8C3A25; --accent-line: #8C3A25; }
+  .jump { max-width: 1360px; margin: 0 auto; padding: 18px 24px 0; display: flex; flex-wrap: wrap; gap: 8px; }
+  .jump a { text-decoration: none; font-size: 14px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink); }
+  .jump a:hover { border-color: var(--ink-2); }
+  .demo { scroll-margin-top: 16px; }
+  .kan { --sign-bg: #191B1D; --sign-fg: #F1F2EF; --sign-sub: rgba(241, 242, 239, .72); --sign-pattern: repeating-linear-gradient(90deg, rgba(255, 255, 255, .035) 0 1px, transparent 1px 18px); --sign-band: linear-gradient(to bottom, #4FA172 0 2px, #2E7D4F 2px); --sign-band-h: 8px; --accent: #2B6A47; --accent-line: #2B6A47; }
+
+  .about { max-width: 1360px; margin: 0 auto; padding: 26px 24px 8px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+  .about h2 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+  .about p { font-size: 15px; color: var(--ink-2); max-width: 62ch; }
+  .about .box { padding: 18px 20px; }
+
+  @media (max-width: 1080px) { .demos { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 760px) { .demos { grid-template-columns: minmax(0, 1fr); max-width: 680px; } .about { grid-template-columns: minmax(0, 1fr); } .top { padding-top: 28px; } }
+  @media (max-width: 640px) { .top, .demos, .about, .jump { padding-left: 14px; padding-right: 14px; } }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand"><a href="https://dobrestrony.nl/" style="text-decoration:none;color:inherit">DobreStrony.nl</a> · interaktywne demonstracje</div>
+  <h1>Panele dopasowane do Twojej branży</h1>
+  <p>Zobacz 11 interaktywnych przykładów narzędzi dla firm. Otwórz wybrany panel i sprawdź, jak mogłaby wyglądać codzienna praca w Twojej branży. Wszystkie dane są demonstracyjne.</p>
+</header>
+
+<nav class="jump" aria-label="Branże">
+  <a href="#przedszkole">Przedszkole i żłobek</a>
+  <a href="#budowa">Firma budowlana</a>
+  <a href="#ogrodzenia">Firma ogrodzeniowa</a>
+  <a href="#fryzjer">Salon fryzjerski</a>
+  <a href="#pogrzeb">Zakład pogrzebowy</a>
+  <a href="#kancelaria">Kancelaria adwokacka</a>
+  <a href="#rachunkowe">Biuro rachunkowe</a>
+  <a href="#warsztat">Warsztat samochodowy</a>
+  <a href="#zarzadca">Zarządca nieruchomości</a>
+  <a href="#serwis">Serwis klimatyzacji i PV</a>
+  <a href="#pensjonat">Pensjonat</a>
+</nav>
+
+<main class="demos">
+  <article class="demo kid" id="przedszkole">
+    <div class="sign"><h2>Przedszkole i żłobek</h2><p>Obecności, opłaty rodziców, kuchnia i zgody</p></div>
+    <a class="shot" href="przedszkole/index.html"><img src="assets/screens/przedszkole.png" alt="Panel przedszkola: tablica obecności dzieci w pięciu grupach" loading="lazy" width="1440" height="900"></a>
+    <div class="demo-b">
+      <p>Dyrektor widzi, kto jest w przedszkolu, kto zalega z opłatą i ile obiadów zamówić. Rodzice dostają ogłoszenia i podpisują zgody.</p>
+      <ul class="mods">
+        <li><a href="przedszkole/index.html#dzis">Dziś <span>obecności i odbiory</span></a></li>
+        <li><a href="przedszkole/index.html#oplaty">Opłaty <span>czesne, wyżywienie, zaległości</span></a></li>
+        <li><a href="przedszkole/index.html#kuchnia">Kuchnia <span>posiłki, diety, jadłospis</span></a></li>
+        <li><a href="przedszkole/index.html#grupy">Grupy i miejsca <span>limity, lista oczekujących</span></a></li>
+        <li><a href="przedszkole/index.html#ogloszenia">Ogłoszenia i zgody <span>kto przeczytał, kto podpisał</span></a></li>
+      </ul>
+      <a class="btn primary" href="przedszkole/index.html">Otwórz demo przedszkola</a>
+    </div>
+  </article>
+
+  <article class="demo bud" id="budowa">
+    <div class="sign"><h2>Firma budowlana</h2><p>Budżet i postęp budów, brygady, sprzęt</p></div>
+    <a class="shot" href="budowa/index.html"><img src="assets/screens/budowa.png" alt="Panel firmy budowlanej: budowy z postępem prac i wydanym budżetem" loading="lazy" width="1440" height="900"></a>
+    <div class="demo-b">
+      <p>Właściciel widzi, która budowa traci pieniądze, co można już zafakturować i gdzie jest każda koparka.</p>
+      <ul class="mods">
+        <li><a href="budowa/index.html#budowy">Budowy <span>budżet, postęp, prognoza wyniku</span></a></li>
+        <li><a href="budowa/index.html#brygady">Brygady <span>plan tygodnia, robocizna</span></a></li>
+        <li><a href="budowa/index.html#material">Materiał <span>dostawy, opóźnienia, kosztorys</span></a></li>
+        <li><a href="budowa/index.html#sprzet">Sprzęt <span>przeglądy, UDT, wynajem</span></a></li>
+        <li><a href="budowa/index.html#podwykonawcy">Podwykonawcy i usterki <span>kaucje, gwarancje</span></a></li>
+      </ul>
+      <a class="btn primary" href="budowa/index.html">Otwórz demo budowlane</a>
+    </div>
+  </article>
+
+  <article class="demo ogr" id="ogrodzenia">
+    <div class="sign"><h2>Firma ogrodzeniowa</h2><p>Zapytania, wyceny, montaże i zaliczki</p></div>
+    <a class="shot" href="ogrodzenia/index.html#kalkulator"><img src="assets/screens/ogrodzenia.png" alt="Panel firmy ogrodzeniowej: kalkulator wyceny z rysunkiem ogrodzenia" loading="lazy" width="1440" height="900"></a>
+    <div class="demo-b">
+      <p>Wycena z rysunkiem w minutę przy kliencie, kalendarz ekip z prognozą pogody i pilnowanie zaliczek przed montażem.</p>
+      <ul class="mods">
+        <li><a href="ogrodzenia/index.html#zapytania">Zapytania <span>od pomiaru do zakończenia</span></a></li>
+        <li><a href="ogrodzenia/index.html#kalkulator">Kalkulator wyceny <span>oferta z rysunkiem i PDF</span></a></li>
+        <li><a href="ogrodzenia/index.html#montaze">Montaże <span>ekipy, terminy, pogoda</span></a></li>
+        <li><a href="ogrodzenia/index.html#material">Materiał <span>malarnia, plac, terminy</span></a></li>
+        <li><a href="ogrodzenia/index.html#platnosci">Płatności <span>zaliczki i dopłaty</span></a></li>
+      </ul>
+      <a class="btn primary" href="ogrodzenia/index.html">Otwórz demo ogrodzeniowe</a>
+    </div>
+  </article>
+
+  <article class="demo fry" id="fryzjer">
+    <div class="sign"><h2>Salon fryzjerski</h2><p>Kalendarz stanowisk, klienci, prowizje</p></div>
+    <a class="shot" href="fryzjer/index.html"><img src="assets/screens/fryzjer.png" alt="Panel salonu fryzjerskiego: kalendarz wizyt czterech osób z wolnymi oknami" loading="lazy" width="1440" height="900"></a>
+    <div class="demo-b">
+      <p>Recepcja widzi wolne okna w grafiku i zapisuje w nie klientów, a stylistka ma pod ręką recepturę koloru z ostatniej wizyty.</p>
+      <ul class="mods">
+        <li><a href="fryzjer/index.html#kalendarz">Kalendarz <span>stanowiska, wolne okna, rozliczenie</span></a></li>
+        <li><a href="fryzjer/index.html#klienci">Klienci <span>receptury, kto dawno nie był</span></a></li>
+        <li><a href="fryzjer/index.html#uslugi">Usługi i cennik <span>ile zarabia godzina fotela</span></a></li>
+        <li><a href="fryzjer/index.html#zespol">Zespół i prowizje <span>obłożenie, grafik</span></a></li>
+        <li><a href="fryzjer/index.html#kosmetyki">Kosmetyki <span>stany, zamówienie do hurtowni</span></a></li>
+      </ul>
+      <a class="btn primary" href="fryzjer/index.html">Otwórz demo salonu</a>
+    </div>
+  </article>
+
+  <article class="demo pog" id="pogrzeb">
+    <div class="sign"><h2>Zakład pogrzebowy</h2><p>Ceremonie, dokumenty, zasiłek ZUS</p></div>
+    <a class="shot" href="pogrzeb/index.html"><img src="assets/screens/pogrzeb.png" alt="Panel zakładu pogrzebowego: ceremonie na najbliższe dni z listą przygotowań" loading="lazy" width="1440" height="900"></a>
+    <div class="demo-b">
+      <p>Każda ceremonia ma listę przygotowań, a kosztorys od razu pokazuje, ile pokrywa zasiłek z ZUS, a ile dopłaca rodzina.</p>
+      <ul class="mods">
+        <li><a href="pogrzeb/index.html#ceremonie">Ceremonie <span>7 dni, przygotowania, karawany</span></a></li>
+        <li><a href="pogrzeb/index.html#sprawy">Sprawy i dokumenty <span>karta i akt zgonu, Z-12</span></a></li>
+        <li><a href="pogrzeb/index.html#chlodnia">Chłodnia i transport <span>komory, przewozy, dyżur</span></a></li>
+        <li><a href="pogrzeb/index.html#kosztorys">Kosztorys <span>z zasiłkiem 7000 zł, do druku</span></a></li>
+        <li><a href="pogrzeb/index.html#rozliczenia">Rozliczenia <span>zasiłki w ZUS, dopłaty rodzin</span></a></li>
+      </ul>
+      <a class="btn primary" href="pogrzeb/index.html">Otwórz demo zakładu</a>
+    </div>
+  </article>
+
+  <article class="demo kan" id="kancelaria">
+    <div class="sign"><h2>Kancelaria adwokacka</h2><p>Wokanda, czas pracy, konflikt interesów</p></div>
+    <a class="shot" href="kancelaria/index.html"><img src="assets/screens/kancelaria.png" alt="Panel kancelarii adwokackiej: wokanda na najbliższe dni i terminy procesowe" loading="lazy" width="1440" height="900"></a>
+    <div class="demo-b">
+      <p>Kolizje rozpraw i zbliżające się terminy widać od razu, stoper liczy czas do faktury, a nowego klienta sprawdzisz pod kątem konfliktu interesów.</p>
+      <ul class="mods">
+        <li><a href="kancelaria/index.html#terminy">Rozprawy i terminy <span>wokanda, kolizje, zastępstwa</span></a></li>
+        <li><a href="kancelaria/index.html#sprawy">Sprawy <span>sygnatury, zespół, najbliżej</span></a></li>
+        <li><a href="kancelaria/index.html#czas">Czas pracy <span>stoper, godziny zespołu</span></a></li>
+        <li><a href="kancelaria/index.html#rozliczenia">Rozliczenia <span>godziny, ryczałty, faktury</span></a></li>
+        <li><a href="kancelaria/index.html#konflikt">Konflikt interesów <span>wyszukiwarka i rejestr</span></a></li>
+      </ul>
+      <a class="btn primary" href="kancelaria/index.html">Otwórz demo kancelarii</a>
+    </div>
+  </article>
+
+  <article class="demo rach" id="rachunkowe">
+    <div class="sign"><h2>Biuro rachunkowe</h2><p>Terminy klientów, dokumenty, KSeF, pakiety</p></div>
+    <a class="shot" href="rachunkowe/index.html"><img src="assets/screens/rachunkowe.png" alt="Panel biura rachunkowego: terminy ZUS, zaliczek i JPK dla każdego klienta" loading="lazy" width="1440" height="900"></a>
+    <div class="demo-b">
+      <p>Jedna tabela pokazuje, którym klientom brakuje dokumentów i co jest do wysłania przed ZUS, zaliczką i JPK. Widać też, który abonament jest za tani.</p>
+      <ul class="mods">
+        <li><a href="rachunkowe/index.html#terminy">Terminy miesiąca <span>ZUS, zaliczki, JPK, płace</span></a></li>
+        <li><a href="rachunkowe/index.html#dokumenty">Dokumenty od klientów <span>braki, przypomnienia, KSeF</span></a></li>
+        <li><a href="rachunkowe/index.html#klienci">Klienci i pakiety <span>dokumenty ponad pakiet</span></a></li>
+        <li><a href="rachunkowe/index.html#zespol">Zespół <span>obciążenie, zastępstwa</span></a></li>
+        <li><a href="rachunkowe/index.html#rozliczenia">Rozliczenia biura <span>faktury i zaległości</span></a></li>
+      </ul>
+      <a class="btn primary" href="rachunkowe/index.html">Otwórz demo biura</a>
+    </div>
+  </article>
+
+  <article class="demo war" id="warsztat">
+    <div class="sign"><h2>Warsztat samochodowy</h2><p>Stanowiska, akceptacje, części, opony</p></div>
+    <a class="shot" href="warsztat/index.html"><img src="assets/screens/warsztat.png" alt="Panel warsztatu samochodowego: cztery stanowiska z autami i auta na placu" loading="lazy" width="1440" height="900"></a>
+    <div class="demo-b">
+      <p>Widać, które auto czeka na części, a które na zgodę klienta na dodatkową naprawę. Przechowalnia opon podpowiada, komu wysłać SMS przed sezonem.</p>
+      <ul class="mods">
+        <li><a href="warsztat/index.html#stanowiska">Stanowiska <span>podnośniki, plac, odbiory</span></a></li>
+        <li><a href="warsztat/index.html#zlecenia">Zlecenia <span>kosztorys, akceptacja klienta</span></a></li>
+        <li><a href="warsztat/index.html#czesci">Części <span>dostawy, opóźnienia, materiały</span></a></li>
+        <li><a href="warsztat/index.html#opony">Opony i przypomnienia <span>przechowalnia, przeglądy</span></a></li>
+        <li><a href="warsztat/index.html#wyniki">Wyniki <span>wydajność mechaników</span></a></li>
+      </ul>
+      <a class="btn primary" href="warsztat/index.html">Otwórz demo warsztatu</a>
+    </div>
+  </article>
+
+  <article class="demo zar" id="zarzadca">
+    <div class="sign"><h2>Zarządca nieruchomości</h2><p>Usterki, fundusz, zaległości, uchwały</p></div>
+    <a class="shot" href="zarzadca/index.html#budynki"><img src="assets/screens/zarzadca.png" alt="Panel zarządcy nieruchomości: karty budynków z funduszem remontowym i zaległościami" loading="lazy" width="1440" height="900"></a>
+    <div class="demo-b">
+      <p>Usterki z fachowcami, zaległości właścicieli krok po kroku, terminy przeglądów budynków i głosowania nad uchwałami liczone udziałami.</p>
+      <ul class="mods">
+        <li><a href="zarzadca/index.html#zgloszenia">Zgłoszenia usterek <span>awarie, fachowcy</span></a></li>
+        <li><a href="zarzadca/index.html#budynki">Budynki <span>fundusz, plan remontów</span></a></li>
+        <li><a href="zarzadca/index.html#oplaty">Opłaty i zaległości <span>upomnienia, wezwania</span></a></li>
+        <li><a href="zarzadca/index.html#przeglady">Przeglądy <span>roczne, 5-letnie, UDT</span></a></li>
+        <li><a href="zarzadca/index.html#uchwaly">Uchwały <span>głosowanie udziałami</span></a></li>
+      </ul>
+      <a class="btn primary" href="zarzadca/index.html">Otwórz demo zarządcy</a>
+    </div>
+  </article>
+
+  <article class="demo ser" id="serwis">
+    <div class="sign"><h2>Serwis klimatyzacji i PV</h2><p>Technicy w terenie, przeglądy, produkcja PV</p></div>
+    <a class="shot" href="serwis/index.html"><img src="assets/screens/serwis.png" alt="Panel serwisu klimatyzacji i fotowoltaiki: trasy trzech techników na dziś" loading="lazy" width="1440" height="900"></a>
+    <div class="demo-b">
+      <p>Trasy techników z protokołem po wizycie, przeglądy, od których zależy gwarancja, i instalacje PV, które produkują mniej, niż powinny.</p>
+      <ul class="mods">
+        <li><a href="serwis/index.html#teren">Dziś w terenie <span>trasy, awarie, protokoły</span></a></li>
+        <li><a href="serwis/index.html#przeglady">Przeglądy okresowe <span>terminy, SMS do klientów</span></a></li>
+        <li><a href="serwis/index.html#pv">Instalacje PV <span>produkcja a oczekiwana</span></a></li>
+        <li><a href="serwis/index.html#umowy">Umowy i gwarancje <span>odnowienia, gwarancje</span></a></li>
+        <li><a href="serwis/index.html#magazyn">Magazyn <span>rezerwacje na montaże</span></a></li>
+      </ul>
+      <a class="btn primary" href="serwis/index.html">Otwórz demo serwisu</a>
+    </div>
+  </article>
+
+  <article class="demo pen" id="pensjonat">
+    <div class="sign"><h2>Pensjonat</h2><p>Kalendarz pokoi, zaliczki, portale</p></div>
+    <a class="shot" href="pensjonat/index.html"><img src="assets/screens/pensjonat.png" alt="Panel pensjonatu: kalendarz ośmiu pokoi na dwa tygodnie z rezerwacjami" loading="lazy" width="1440" height="900"></a>
+    <div class="demo-b">
+      <p>Kalendarz pokoi z zaliczkami, plan przyjazdów, wyjazdów i sprzątania na dziś oraz wyliczenie, ile zostaje z rezerwacji po prowizji portalu.</p>
+      <ul class="mods">
+        <li><a href="pensjonat/index.html#kalendarz">Kalendarz pokoi <span>rezerwacje, blokady</span></a></li>
+        <li><a href="pensjonat/index.html#dzis">Dziś <span>przyjazdy, wyjazdy, sprzątanie</span></a></li>
+        <li><a href="pensjonat/index.html#rezerwacje">Rezerwacje i zaliczki <span>przypomnienia</span></a></li>
+        <li><a href="pensjonat/index.html#oblozenie">Obłożenie i kanały <span>prowizje portali</span></a></li>
+        <li><a href="pensjonat/index.html#goscie">Stali goście <span>oferty dla wracających</span></a></li>
+      </ul>
+      <a class="btn primary" href="pensjonat/index.html">Otwórz demo pensjonatu</a>
+    </div>
+  </article>
+</main>
+
+<section class="about">
+  <div class="box">
+    <h2>Jak działa demo</h2>
+    <p>Wszystkie osoby, firmy i kwoty są wymyślone. Możesz klikać, przenosić i zapisywać, ale po odświeżeniu strony wszystko wraca do stanu początkowego. Daty zawsze liczą się od dzisiejszego dnia.</p>
+  </div>
+  <div class="box">
+    <h2>Chcesz taki panel u siebie?</h2>
+    <p>Tworzymy panele i narzędzia internetowe dopasowane do procesów firmy. <a href="https://dobrestrony.nl/">Poznaj DobreStrony.nl</a> i zapytaj o indywidualną realizację.</p>
+  </div>
+</section>
+
+<footer class="foot" style="padding-top:22px">
+  <span>DobreStrony.nl · demonstracje możliwości, nie gotowe systemy produkcyjne</span>
+  <span>Czcionka Archivo (Google Fonts, licencja SIL OFL)</span>
+</footer>
+
+</body>
+</html>

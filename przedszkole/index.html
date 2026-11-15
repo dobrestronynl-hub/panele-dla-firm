@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Przedszkole i żłobek – panel demo</title>
+<meta name="description" content="Panel demo dla przedszkola i żłobka: obecności i odbiory, opłaty rodziców, kuchnia, grupy i miejsca, ogłoszenia i zgody. Dane przykładowe.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
+<link rel="stylesheet" href="../assets/panel.css">
+<style>
+  /* Tablica kredowa z drewnianą listwą */
+  body {
+    --sign-bg: #2C4A41; --sign-fg: #F3F0E3; --sign-sub: rgba(243, 240, 227, .76);
+    --sign-pattern: radial-gradient(rgba(255, 255, 255, .045) 1px, transparent 1.6px);
+    --sign-band: linear-gradient(#B98B5C, #8E663F); --sign-band-h: 10px;
+    --accent: #2F6B57; --accent-ink: #FFFFFF; --accent-soft: #E2EEE8; --accent-line: #2F6B57;
+  }
+  .sign { background-size: 7px 7px; }
+
+  /* Tablica obecności */
+  .board { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; align-items: start; }
+  .grp { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-box); }
+  .grp-h { padding: 10px 12px 9px; border-bottom: 1px solid var(--line-soft); }
+  .grp-h b { font-size: 15.5px; font-weight: 700; }
+  .grp-h div { font-size: 12.5px; color: var(--ink-3); }
+  .kids { padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+  .kid {
+    appearance: none; width: 100%; text-align: left; cursor: pointer;
+    display: flex; justify-content: space-between; align-items: baseline; gap: 6px;
+    padding: 5px 8px; font-size: 13.5px; background: var(--surface);
+    border: 1px solid var(--line-soft); border-left: 4px solid var(--ok); border-radius: 4px;
+  }
+  .kid:hover { border-color: var(--accent-line); }
+  .kid small { font-size: 12px; color: var(--ink-3); white-space: nowrap; }
+  .kid .mark { color: var(--bad); font-weight: 700; margin-left: 3px; }
+  .kid.out { border-left-color: #A9B1B9; background: var(--surface-2); color: var(--ink-2); }
+  .kid.abs { border-left-color: #C9CED3; color: var(--ink-3); background: repeating-linear-gradient(-45deg, #F7F8F7 0 6px, #EFF1EF 6px 12px); }
+  .kid.miss { border-left-color: #C98200; background: var(--warn-soft); }
+  .legend { display: flex; gap: 6px 16px; flex-wrap: wrap; font-size: 12.5px; color: var(--ink-2); }
+  .legend i { display: inline-block; width: 4px; height: 13px; margin-right: 6px; vertical-align: -2px; border-radius: 1px; }
+
+  /* Grupy */
+  .gcards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+  .gcard { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-box); padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+  .gcard h3 { font-size: 17px; font-weight: 700; }
+  .gcard .t { font-size: 13px; color: var(--ink-3); }
+  .gcard dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin: 0; font-size: 13.5px; }
+  .gcard dt { color: var(--ink-3); } .gcard dd { margin: 0; }
+
+  /* Jadłospis */
+  .menu td { vertical-align: top; min-width: 150px; }
+  .menu .today { background: var(--accent-soft); }
+  .menu .al { display: block; font-size: 12px; color: var(--ink-3); margin-top: 2px; }
+  .diet-list { display: flex; flex-direction: column; gap: 12px; }
+  .diet-list h4 { font-size: 14px; display: flex; justify-content: space-between; gap: 8px; }
+  .diet-list p { font-size: 13.5px; color: var(--ink-2); margin-top: 3px; }
+
+  /* Ogłoszenia */
+  .ann { padding: 14px 16px; border-bottom: 1px solid var(--line-soft); display: flex; flex-direction: column; gap: 6px; }
+  .ann:last-child { border-bottom: 0; }
+  .ann h3 { font-size: 15.5px; font-weight: 680; }
+  .ann p { font-size: 14px; color: var(--ink-2); max-width: 75ch; }
+  .ann .meta { font-size: 12.5px; color: var(--ink-3); }
+  details.miss summary { cursor: pointer; font-size: 13px; color: var(--accent-line); font-weight: 600; }
+  details.miss p { font-size: 13px; color: var(--ink-2); margin-top: 6px; }
+
+  @media (max-width: 1180px) { .board { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (max-width: 720px) { .board { grid-template-columns: minmax(0, 1fr); } }
+</style>
+</head>
+<body>
+
+<header class="sign">
+  <div class="sign-top">
+    <a href="../index.html">Wszystkie panele</a>
+    <span class="demo-flag">Dane przykładowe</span>
+  </div>
+  <div class="sign-inner">
+    <div>
+      <h1>Twoje przedszkole i żłobek</h1>
+      <p class="sign-sub">5 grup, obecności, opłaty, kuchnia i kontakt z rodzicami w jednym miejscu</p>
+    </div>
+    <div class="sign-meta"><strong id="sign-day"></strong><span id="sign-now"></span></div>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="Moduły panelu">
+  <div class="tabs-inner" role="tablist">
+    <button class="tab" data-tab="dzis">Dziś</button>
+    <button class="tab" data-tab="oplaty">Opłaty</button>
+    <button class="tab" data-tab="kuchnia">Kuchnia</button>
+    <button class="tab" data-tab="grupy">Grupy i miejsca</button>
+    <button class="tab" data-tab="ogloszenia">Ogłoszenia i zgody</button>
+  </div>
+</nav>
+
+<main>
+  <!-- DZIŚ -->
+  <section data-panel="dzis" class="stack">
+    <div id="dzis-strip"></div>
+    <div class="row-between">
+      <div id="dzis-groups"></div>
+      <div class="legend">
+        <span><i style="background:var(--ok)"></i>w przedszkolu</span>
+        <span><i style="background:#A9B1B9"></i>odebrane</span>
+        <span><i style="background:#C9CED3"></i>nieobecne, zgłoszone</span>
+        <span><i style="background:#C98200"></i>brak zgłoszenia</span>
+        <span><b style="color:var(--bad)">*</b> dieta lub alergia</span>
+      </div>
+    </div>
+    <div id="dzis-board" class="board"></div>
+    <p class="muted small">Kliknij dziecko, żeby zobaczyć, kto może je odebrać, albo zapisać przyjście i odbiór.</p>
+  </section>
+
+  <!-- OPŁATY -->
+  <section data-panel="oplaty" class="stack">
+    <div id="opl-strip"></div>
+    <div class="cols-even">
+      <div class="box">
+        <div class="box-h"><h2>Wpłaty według grup</h2><p id="opl-bars-sub"></p></div>
+        <div class="box-b"><div id="opl-bars"></div></div>
+      </div>
+      <div class="box">
+        <div class="box-h"><h2>Zaległości</h2><button class="btn sm" id="opl-remind-all">Przypomnij wszystkim</button></div>
+        <div class="box-b flush scroll-sm" id="opl-late"></div>
+      </div>
+    </div>
+    <div class="box">
+      <div class="box-h">
+        <div class="row"><div id="opl-month"></div><div id="opl-filter"></div></div>
+        <select id="opl-group" class="inp" aria-label="Grupa"></select>
+      </div>
+      <div class="box-b flush scroll-lg" id="opl-table"></div>
+    </div>
+    <p class="muted small">Wyżywienie liczy się za dni obecności: zgłoszona nieobecność zmniejsza opłatę. Godziny dodatkowe to pobyt po 17:00.</p>
+  </section>
+
+  <!-- KUCHNIA -->
+  <section data-panel="kuchnia" class="stack">
+    <div id="kuch-strip"></div>
+    <div class="cols">
+      <div class="box">
+        <div class="box-h"><h2>Posiłki na dziś według grup</h2><button class="btn sm no-print" onclick="window.print()">Drukuj dla kuchni</button></div>
+        <div class="box-b flush" id="kuch-meals"></div>
+      </div>
+      <div class="box">
+        <div class="box-h"><h2>Diety i alergie dzieci obecnych dziś</h2></div>
+        <div class="box-b"><div id="kuch-diets" class="diet-list"></div></div>
+      </div>
+    </div>
+    <div class="box">
+      <div class="box-h"><h2>Jadłospis na ten tydzień</h2><p>Alergeny pod każdym posiłkiem. Rodzice widzą ten sam jadłospis.</p></div>
+      <div class="box-b flush" id="kuch-menu"></div>
+    </div>
+  </section>
+
+  <!-- GRUPY -->
+  <section data-panel="grupy" class="stack">
+    <div id="grp-strip"></div>
+    <div id="grp-cards" class="gcards"></div>
+    <div class="box">
+      <div class="box-h"><h2>Lista oczekujących</h2><p>Przyjęcie zajmuje wolne miejsce w grupie, dziecko pojawia się w obecnościach i opłatach.</p></div>
+      <div class="box-b flush" id="grp-wait"></div>
+    </div>
+  </section>
+
+  <!-- OGŁOSZENIA -->
+  <section data-panel="ogloszenia" class="stack">
+    <div id="ogl-strip"></div>
+    <div class="cols">
+      <div class="box">
+        <div class="box-h"><h2>Ogłoszenia dla rodziców</h2><button class="btn primary sm" id="ogl-new">Nowe ogłoszenie</button></div>
+        <div id="ogl-list"></div>
+      </div>
+      <div class="box">
+        <div class="box-h"><h2>Zgody</h2><p>Kto jeszcze nie podpisał</p></div>
+        <div id="ogl-zgody"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <span>Panel demo. Wszystkie dzieci, rodzice i opiekunowie są wymyśleni, zmiany znikają po odświeżeniu strony.</span>
+  <a href="../index.html">Zobacz pozostałe panele</a>
+</footer>
+
+<script src="../assets/panel.js"></script>
+<script>
+(function () {
+  'use strict';
+  var r = P.rng(20251102);
+  var TODAY = P.today();
+  var DAY = P.workday(TODAY);
+  var NOW = 14 * 60 + 30;            /* stan tablicy obecności: 14:30 */
+  var FEE_HOUR = 15;                 /* zł za godzinę po 17:00 */
+
+  /* ---------- Dane przykładowe ---------- */
+  var GROUPS = [
+    { id: 'biedronki', name: 'Biedronki', type: 'żłobek', age: '1–2 lata', limit: 8, staff: ['Agnieszka W.', 'Marta K.'], fee: 1500, meal: 16, months: [12, 23] },
+    { id: 'motylki', name: 'Motylki', type: 'żłobek', age: '2–3 lata', limit: 10, staff: ['Ewa S.', 'Joanna P.'], fee: 1500, meal: 16, months: [24, 35] },
+    { id: 'misie', name: 'Misie', type: 'przedszkole', age: '3 lata', limit: 20, staff: ['Katarzyna M.', 'Beata L.'], fee: 1100, meal: 14, months: [36, 47] },
+    { id: 'jezyki', name: 'Jeżyki', type: 'przedszkole', age: '4 lata', limit: 22, staff: ['Monika R.', 'Iwona B.'], fee: 1100, meal: 14, months: [48, 59] },
+    { id: 'sowy', name: 'Sowy', type: 'przedszkole', age: '5–6 lat', limit: 24, staff: ['Teresa G.', 'Dorota F.'], fee: 1100, meal: 14, months: [60, 80] }
+  ];
+  var COUNT = { biedronki: 7, motylki: 10, misie: 19, jezyki: 22, sowy: 23 };
+  var G = {}; GROUPS.forEach(function (g) { G[g.id] = g; });
+
+  var GIRLS = ['Zosia', 'Hania', 'Lena', 'Maja', 'Julia', 'Ola', 'Pola', 'Nadia', 'Laura', 'Alicja', 'Iga', 'Oliwia', 'Amelia', 'Wiktoria', 'Natalia', 'Marysia', 'Ania', 'Basia', 'Tosia', 'Helenka', 'Emilka', 'Kalina'];
+  var BOYS = ['Antoś', 'Kuba', 'Franek', 'Staś', 'Jaś', 'Filip', 'Leon', 'Mikołaj', 'Szymon', 'Tymek', 'Igor', 'Wojtek', 'Olek', 'Kacper', 'Bartek', 'Michał', 'Adaś', 'Maks', 'Józio', 'Ignaś', 'Henio', 'Kostek'];
+  var INIT = 'ABCDFGJKLMNOPRSTWZ'.split('');
+  var MOMS = ['Anna', 'Katarzyna', 'Magdalena', 'Agnieszka', 'Joanna', 'Monika', 'Paulina', 'Karolina', 'Ewelina', 'Natalia', 'Aleksandra', 'Justyna'];
+  var DADS = ['Piotr', 'Tomasz', 'Paweł', 'Michał', 'Marcin', 'Łukasz', 'Krzysztof', 'Jakub', 'Mateusz', 'Adrian', 'Kamil', 'Grzegorz'];
+  var OTHERS = ['babcia Halina', 'babcia Teresa', 'dziadek Józef', 'ciocia Ewa', 'niania Grażyna', 'dziadek Stanisław', 'babcia Krystyna'];
+  var DIETS = [
+    { k: 'gluten', n: 'Bez glutenu', alerg: false },
+    { k: 'laktoza', n: 'Bez laktozy', alerg: false },
+    { k: 'wege', n: 'Wegetariańska', alerg: false },
+    { k: 'orzechy', n: 'Alergia na orzechy', alerg: true },
+    { k: 'jaja', n: 'Alergia na jaja', alerg: true }
+  ];
+  var ABS_REASON = ['choroba', 'choroba', 'wyjazd z rodzicami', 'wizyta u lekarza'];
+
+  var used = {};
+  function newName(girl) {
+    for (;;) {
+      var f = P.pick(r, girl ? GIRLS : BOYS), l = P.pick(r, INIT), n = f + ' ' + l + '.';
+      if (!used[n]) { used[n] = 1; return { first: f, last: l, name: n }; }
+    }
+  }
+
+  function monthInfo(back) {
+    var d = new Date(TODAY.getFullYear(), TODAY.getMonth() - back, 1);
+    var y = d.getFullYear(), m = d.getMonth();
+    var label = P.MON[m]; label = label.charAt(0).toUpperCase() + label.slice(1);
+    return { key: 'm' + back, y: y, m: m, label: label, due: new Date(y, m + 1, 10), wd: P.workdaysInMonth(y, m), firstNext: new Date(y, m + 1, 1) };
+  }
+  var MONTHS = [monthInfo(1), monthInfo(2)];
+
+  var kids = [];
+  var missCount = 0;
+  GROUPS.forEach(function (g) {
+    for (var i = 0; i < COUNT[g.id]; i++) {
+      var girl = r() < 0.5, nm = newName(girl);
+      var mom = P.pick(r, MOMS) + ' ' + nm.last + '.', dad = P.pick(r, DADS) + ' ' + nm.last + '.';
+      var pick = ['Mama: ' + mom, 'Tata: ' + dad];
+      if (r() < 0.6) pick.push(P.pick(r, OTHERS).replace(/^./, function (c) { return c.toUpperCase(); }));
+      var ageM = P.int(r, g.months[0], g.months[1]);
+      var born = P.addDays(new Date(TODAY.getFullYear(), TODAY.getMonth() - ageM, 1), P.int(r, 0, 27));
+      var diet = r() < 0.13 ? P.pick(r, DIETS) : null;
+      var k = { id: g.id + i, name: nm.name, first: nm.first, girl: girl, group: g.id, born: born, mom: mom, dad: dad, pickup: pick, diet: diet, fees: {} };
+      /* dziś */
+      var x = r();
+      if (x < 0.09) k.today = { st: 'abs', reason: P.pick(r, ABS_REASON) };
+      else if (x < 0.13 && missCount < 3) { k.today = { st: 'miss' }; missCount++; }
+      else {
+        var arr = g.type === 'żłobek' ? P.int(r, 7 * 60, 8 * 60 + 40) : P.int(r, 6 * 60 + 40, 8 * 60 + 50);
+        arr = arr - arr % 1;
+        if (r() < (g.type === 'żłobek' ? 0.38 : 0.18)) {
+          var out = P.int(r, 12 * 60 + 15, 14 * 60 + 20);
+          k.today = { st: 'out', arr: arr, out: out, by: P.pick(r, pick.slice(0, 2)) };
+        } else k.today = { st: 'in', arr: arr };
+      }
+      /* opłaty za dwa ostatnie miesiące */
+      MONTHS.forEach(function (M, idx) {
+        var abs = r() < 0.55 ? 0 : P.int(r, 1, 6);
+        var extra = r() < 0.3 ? P.int(r, 1, 6) : 0;
+        var duePassed = M.due < TODAY;
+        var pPaid = idx === 1 ? 0.93 : (duePassed ? 0.86 : 0.44);
+        var paid = r() < pPaid;
+        var span = Math.max(0, Math.min(14, P.days(M.firstNext, TODAY)));
+        k.fees[M.key] = { abs: abs, extra: extra, paid: paid, paidDate: paid ? P.addDays(M.firstNext, P.int(r, 0, span)) : null, reminded: false };
+      });
+      kids.push(k);
+    }
+  });
+
+  var WAIT = [];
+  (function () {
+    var plan = [['biedronki', 'Nowe zgłoszenie'], ['biedronki', 'Po rozmowie'], ['motylki', 'Po rozmowie'], ['motylki', 'Nowe zgłoszenie'],
+      ['misie', 'Czeka na miejsce'], ['jezyki', 'Po rozmowie'], ['sowy', 'Nowe zgłoszenie'], ['misie', 'Nowe zgłoszenie'], ['motylki', 'Czeka na miejsce']];
+    plan.forEach(function (p, i) {
+      var g = G[p[0]], girl = r() < 0.5, nm = newName(girl);
+      var ageM = P.int(r, g.months[0], g.months[1]);
+      WAIT.push({ id: 'w' + i, name: nm.name, girl: girl, group: g.id, born: P.addDays(new Date(TODAY.getFullYear(), TODAY.getMonth() - ageM, 1), P.int(r, 0, 27)),
+        since: P.addDays(TODAY, -P.int(r, 3, 120)), status: p[1], parent: P.pick(r, MOMS) + ' ' + nm.name.split(' ')[1] });
+    });
+  })();
+
+  function kidsIn(gid) { return kids.filter(function (k) { return k.group === gid; }); }
+  function familiesIn(ids) { return kids.filter(function (k) { return ids.indexOf(k.group) >= 0 && !k.isNew; }); }
+
+  var ANN = [
+    { title: 'Zebranie z rodzicami grup przedszkolnych', date: P.addDays(DAY, -3), text: 'Zapraszamy w czwartek o 17:00 do sali Sów. Omówimy plan na najbliższe tygodnie i przygotowania do jasełek. Opieka nad dziećmi w tym czasie w sali Misiów.', groups: ['misie', 'jezyki', 'sowy'], readP: 0.82 },
+    { title: 'Dzień Pluszowego Misia', date: P.addDays(DAY, -6), text: 'W przyszły wtorek dzieci mogą przynieść swoją ulubioną przytulankę. Prosimy podpisać zabawkę.', groups: ['biedronki', 'motylki', 'misie', 'jezyki', 'sowy'], readP: 0.91 },
+    { title: 'Prośba o zapasowe ubranka', date: P.addDays(DAY, -9), text: 'Robi się chłodniej. Prosimy o komplet ubrań na zmianę w szafce, podpisany imieniem dziecka.', groups: ['biedronki', 'motylki'], readP: 0.96 }
+  ];
+  ANN.forEach(function (a) { var n = familiesIn(a.groups).length; a.total = n; a.read = Math.round(n * a.readP); });
+
+  var ZGODY = [
+    { title: 'Wycieczka do teatru lalek', when: 'wyjazd ' + P.dLong(P.addWorkdays(DAY, 8)) + ', godz. 9:00–12:30', groups: ['jezyki', 'sowy'], p: 0.84 },
+    { title: 'Zdjęcia dzieci na stronie i w galerii dla rodziców', when: 'zgoda na rok szkolny', groups: ['biedronki', 'motylki', 'misie', 'jezyki', 'sowy'], p: 0.9 },
+    { title: 'Zajęcia z dogoterapeutą', when: P.dLong(P.addWorkdays(DAY, 5)) + ', psy w sali Misiów', groups: ['misie'], p: 0.74 }
+  ];
+  ZGODY.forEach(function (z) {
+    z.given = {};
+    familiesIn(z.groups).forEach(function (k) { if (r() < z.p) z.given[k.id] = 1; });
+  });
+
+  /* ---------- Pomocnicze ---------- */
+  function fee(k, M) {
+    var f = k.fees[M.key]; if (!f) return null;
+    var g = G[k.group], days = M.wd - f.abs;
+    var t = { czesne: g.fee, mealDays: days, meal: days * g.meal, mealRate: g.meal, extraH: f.extra, extra: f.extra * FEE_HOUR };
+    t.total = t.czesne + t.meal + t.extra;
+    t.f = f; t.M = M;
+    t.late = !f.paid && M.due < TODAY ? P.days(M.due, TODAY) : 0;
+    return t;
+  }
+  function feeStatus(t) {
+    if (t.f.paid) return P.chip('Opłacone ' + P.d(t.f.paidDate), 'ok');
+    if (t.late) return P.chip('Zaległe ' + t.late + ' dni', 'bad') + (t.f.reminded ? ' ' + P.chip('przypomniano', 'info') : '');
+    return P.chip('Czeka, termin ' + P.d(t.M.due), 'warn') + (t.f.reminded ? ' ' + P.chip('przypomniano', 'info') : '');
+  }
+  function payer(k) { return k.mom; }
+  function ageText(born) {
+    var m = (TODAY.getFullYear() - born.getFullYear()) * 12 + TODAY.getMonth() - born.getMonth();
+    if (m < 36) return m + ' mies.';
+    var y = Math.floor(m / 12);
+    return y + (y < 5 ? ' lata' : ' lat');
+  }
+
+  /* ---------- Nagłówek ---------- */
+  P.$('#sign-day').textContent = P.dayTitle(DAY);
+  P.$('#sign-now').textContent = 'stan na ' + P.hm(NOW) + (P.days(DAY, TODAY) ? ' (ostatni dzień roboczy)' : '');
+
+  /* ---------- DZIŚ ---------- */
+  var boardGroup = 'all';
+  function kidTile(k) {
+    var t = k.today, sub;
+    if (t.st === 'in') sub = 'od ' + P.hm(t.arr);
+    else if (t.st === 'out') sub = 'odebr. ' + P.hm(t.out);
+    else if (t.st === 'abs') sub = t.reason === 'przyjęte dziś' ? 'od jutra' : 'nieobecne';
+    else sub = 'brak zgłoszenia';
+    return '<button class="kid ' + t.st + '" data-id="' + k.id + '"><span>' + P.esc(k.name) +
+      (k.diet ? '<span class="mark" title="' + P.esc(k.diet.n) + '" aria-label="' + P.esc(k.diet.n) + '">*</span>' : '') +
+      '</span><small>' + sub + '</small></button>';
+  }
+  P.views.dzis = function () {
+    var cnt = { in: 0, out: 0, abs: 0, miss: 0 };
+    kids.forEach(function (k) { cnt[k.today.st]++; });
+    var meals = kids.filter(function (k) { return k.today.st === 'in' || k.today.st === 'out'; }).length;
+    P.strip(P.$('#dzis-strip'), [
+      { label: 'W przedszkolu teraz', value: cnt.in, note: 'z ' + kids.length + ' zapisanych dzieci' },
+      { label: 'Już odebrane', value: cnt.out, note: 'wydane osobom upoważnionym' },
+      { label: 'Nieobecne, zgłoszone', value: cnt.abs, note: 'nie liczymy im wyżywienia' },
+      { label: 'Brak zgłoszenia', value: cnt.miss, note: cnt.miss ? 'zadzwoń do rodziców' : 'wszyscy dali znać', tone: cnt.miss ? 'warn' : 'ok' },
+      { label: 'Obiadów wydanych', value: meals, note: 'zgodnie z obecnością' }
+    ]);
+    P.seg(P.$('#dzis-groups'), [{ v: 'all', l: 'Wszystkie grupy' }].concat(GROUPS.map(function (g) { return { v: g.id, l: g.name }; })), boardGroup, function (v) { boardGroup = v; P.views.dzis(); });
+    var board = P.$('#dzis-board');
+    var gs = GROUPS.filter(function (g) { return boardGroup === 'all' || g.id === boardGroup; });
+    board.style.gridTemplateColumns = boardGroup === 'all' ? '' : 'minmax(0, 420px)';
+    board.innerHTML = gs.map(function (g) {
+      var list = kidsIn(g.id).slice().sort(function (a, b) {
+        var o = { miss: 0, in: 1, out: 2, abs: 3 }; return o[a.today.st] - o[b.today.st] || a.name.localeCompare(b.name, 'pl');
+      });
+      var here = list.filter(function (k) { return k.today.st === 'in'; }).length;
+      return '<div class="grp"><div class="grp-h"><b>' + g.name + '</b><div>' + g.type + ', ' + g.age + ' &nbsp;|&nbsp; jest ' + here + ' z ' + list.length + '</div></div>' +
+        '<div class="kids">' + list.map(kidTile).join('') + '</div></div>';
+    }).join('');
+    P.$$('.kid', board).forEach(function (b) { b.addEventListener('click', function () { openKid(b.getAttribute('data-id')); }); });
+  };
+
+  function findKid(id) { return kids.filter(function (k) { return k.id === id; })[0]; }
+  function openKid(id) {
+    var k = findKid(id), t = k.today, g = G[k.group];
+    var st = { in: P.chip('W przedszkolu', 'ok'), out: P.chip('Odebrane', ''), abs: P.chip('Nieobecne (' + (t.reason || '') + ')', ''), miss: P.chip('Brak zgłoszenia nieobecności', 'warn') }[t.st];
+    var body = '<dl class="kv">' +
+      '<dt>Status</dt><dd>' + st + '</dd>' +
+      (t.arr != null ? '<dt>Przyszło</dt><dd>' + P.hm(t.arr) + '</dd>' : '') +
+      (t.st === 'out' ? '<dt>Odebrane</dt><dd>' + P.hm(t.out) + ', ' + P.esc(t.by) + '</dd>' : '') +
+      '<dt>Może odebrać</dt><dd>' + k.pickup.map(P.esc).join('<br>') + '</dd>' +
+      '<dt>Dieta</dt><dd>' + (k.diet ? P.chip(k.diet.n, k.diet.alerg ? 'bad' : 'info') : 'zwykła') + '</dd>' +
+      '<dt>Wiek</dt><dd>' + ageText(k.born) + ', ur. ' + P.dy(k.born) + '</dd>' +
+      '<dt>Kontakt</dt><dd>' + P.esc(k.mom) + ', ' + P.esc(k.dad) + '<span class="sub muted small">telefony w karcie dziecka</span></dd>' +
+      '</dl>';
+    var actions = [];
+    if (t.st === 'in') actions.push({ label: 'Wydaj dziecko', primary: true, onClick: function (close) { close(); pickUp(k); } });
+    if (t.st === 'miss') {
+      actions.push({ label: 'Zapisz nieobecność', onClick: function (close) { k.today = { st: 'abs', reason: 'zgłoszone telefonicznie' }; close(); P.toast('Zapisano nieobecność: ' + k.name); P.refresh(); } });
+      actions.push({ label: 'Przyszło teraz', primary: true, onClick: function (close) { k.today = { st: 'in', arr: NOW }; close(); P.toast('Zapisano przyjście: ' + k.name + ', ' + P.hm(NOW)); P.refresh(); } });
+    }
+    if (t.st === 'abs' && t.reason !== 'przyjęte dziś') actions.push({ label: 'Przyszło jednak', onClick: function (close) { k.today = { st: 'in', arr: NOW }; close(); P.toast('Zapisano przyjście: ' + k.name); P.refresh(); } });
+    actions.push({ label: 'Zamknij', ghost: true });
+    P.modal({ title: k.name, sub: 'Grupa ' + g.name + ', ' + g.type, body: body, actions: actions });
+  }
+  function pickUp(k) {
+    var body = '<p class="lead" style="margin-bottom:12px">Kto odbiera? Na liście są tylko osoby upoważnione przez rodziców.</p>' +
+      k.pickup.map(function (p, i) { return '<label class="check" style="margin:6px 0"><input type="radio" name="who" value="' + i + '"' + (i === 0 ? ' checked' : '') + '> ' + P.esc(p) + '</label>'; }).join('') +
+      '<p class="muted small" style="margin-top:12px">Nie znasz osoby? Poproś o dokument tożsamości i porównaj z upoważnieniem w karcie dziecka.</p>';
+    P.modal({ title: 'Wydanie dziecka: ' + k.name, body: body, actions: [
+      { label: 'Anuluj', ghost: true },
+      { label: 'Wydaj dziecko', primary: true, onClick: function (close, d) {
+        var i = +P.$('input[name=who]:checked', d).value;
+        k.today = { st: 'out', arr: k.today.arr, out: NOW, by: k.pickup[i] };
+        close(); P.toast('Wydano: ' + k.name + ' (' + k.pickup[i] + ') o ' + P.hm(NOW)); P.refresh();
+      } }
+    ] });
+  }
+
+  /* ---------- OPŁATY ---------- */
+  var oplMonth = 'm1', oplFilter = 'all', oplGroup = 'all';
+  P.views.oplaty = function () {
+    var M = MONTHS.filter(function (m) { return m.key === oplMonth; })[0];
+    var all = kids.filter(function (k) { return !k.isNew; }).map(function (k) { var t = fee(k, M); t.k = k; return t; });
+    var due = 0, paid = 0, nPaid = 0, wait = 0, nWait = 0;
+    all.forEach(function (t) { due += t.total; if (t.f.paid) { paid += t.total; nPaid++; } else if (!t.late) { wait += t.total; nWait++; } });
+    var late = 0, lateFam = {};
+    kids.forEach(function (k) { MONTHS.forEach(function (m) { var t = !k.isNew && fee(k, m); if (t && t.late) { late += t.total; lateFam[k.id] = 1; } }); });
+    var nLate = Object.keys(lateFam).length;
+    P.strip(P.$('#opl-strip'), [
+      { label: 'Do zapłaty za ' + M.label.toLowerCase(), value: P.zl(due), note: all.length + ' dzieci, termin ' + P.d(M.due) },
+      { label: 'Wpłacone', value: P.zl(paid), note: P.n(nPaid, 'rodzina', 'rodziny', 'rodzin'), tone: 'ok' },
+      { label: 'Czeka na wpłatę', value: P.zl(wait), note: P.n(nWait, 'rodzina', 'rodziny', 'rodzin') + ', termin jeszcze nie minął', tone: nWait ? 'warn' : '' },
+      { label: 'Zaległe (wszystkie miesiące)', value: P.zl(late), note: P.n(nLate, 'rodzina', 'rodziny', 'rodzin') + ' po terminie', tone: nLate ? 'bad' : 'ok' }
+    ]);
+    P.seg(P.$('#opl-month'), MONTHS.map(function (m) { return { v: m.key, l: m.label }; }), oplMonth, function (v) { oplMonth = v; P.views.oplaty(); });
+    P.seg(P.$('#opl-filter'), [{ v: 'all', l: 'Wszystkie' }, { v: 'late', l: 'Zaległe' }, { v: 'wait', l: 'Czeka' }, { v: 'paid', l: 'Opłacone' }], oplFilter, function (v) { oplFilter = v; P.views.oplaty(); });
+    var sel = P.$('#opl-group');
+    sel.innerHTML = P.options([{ v: 'all', l: 'Wszystkie grupy' }].concat(GROUPS.map(function (g) { return { v: g.id, l: g.name }; })), oplGroup);
+    sel.onchange = function () { oplGroup = sel.value; P.views.oplaty(); };
+
+    var rows = all.filter(function (t) {
+      if (oplGroup !== 'all' && t.k.group !== oplGroup) return false;
+      if (oplFilter === 'late') return t.late > 0;
+      if (oplFilter === 'wait') return !t.f.paid && !t.late;
+      if (oplFilter === 'paid') return t.f.paid;
+      return true;
+    });
+    var sum = rows.reduce(function (s, t) { return s + t.total; }, 0);
+    P.table(P.$('#opl-table'), [
+      { key: 'name', label: 'Dziecko', val: function (t) { return t.k.name; }, html: function (t) { return P.esc(t.k.name) + '<span class="sub">' + G[t.k.group].name + ', płaci ' + P.esc(payer(t.k)) + '</span>'; } },
+      { key: 'czesne', label: 'Czesne', num: 1, val: function (t) { return t.czesne; }, html: function (t) { return P.zl(t.czesne); } },
+      { key: 'meal', label: 'Wyżywienie', num: 1, val: function (t) { return t.meal; }, html: function (t) { return P.zl(t.meal) + '<span class="sub">' + t.mealDays + ' dni × ' + t.mealRate + ' zł</span>'; } },
+      { key: 'extra', label: 'Po 17:00', num: 1, val: function (t) { return t.extra; }, html: function (t) { return t.extra ? P.zl(t.extra) + '<span class="sub">' + t.extraH + ' h</span>' : '<span class="muted">–</span>'; } },
+      { key: 'total', label: 'Razem', num: 1, val: function (t) { return t.total; }, html: function (t) { return '<b>' + P.zl(t.total) + '</b>'; } },
+      { key: 'st', label: 'Status', val: function (t) { return t.f.paid ? 2 : (t.late ? 0 : 1); }, html: feeStatus },
+      { key: 'akcja', label: '', sort: false, html: function (t) {
+        return t.f.paid ? '' : '<div class="acts"><button class="btn sm" data-rem="' + t.k.id + '">Przypomnij</button><button class="btn sm" data-pay="' + t.k.id + '">Wpłata</button></div>';
+      } }
+    ], { rows: rows, sortKey: 'st', empty: 'Brak opłat w tym widoku.',
+      foot: '<tr><td>' + rows.length + ' dzieci</td><td></td><td></td><td></td><td class="num">' + P.zl(sum) + '</td><td colspan="2"></td></tr>' });
+    P.$$('[data-pay]', P.$('#opl-table')).forEach(function (b) { b.onclick = function () { var k = findKid(b.getAttribute('data-pay')), t = fee(k, M); t.f.paid = true; t.f.paidDate = TODAY; P.toast('Wpłata zapisana: ' + k.name + ', ' + P.zl(t.total)); P.views.oplaty(); }; });
+    P.$$('[data-rem]', P.$('#opl-table')).forEach(function (b) { b.onclick = function () { var k = findKid(b.getAttribute('data-rem')); k.fees[M.key].reminded = true; P.toast('Przypomnienie wysłane: ' + payer(k) + ' (SMS i e-mail)'); P.views.oplaty(); }; });
+
+    P.$('#opl-bars-sub').textContent = M.label + ', wpłacone z należnych';
+    P.bars(P.$('#opl-bars'), GROUPS.map(function (g) {
+      var ts = all.filter(function (t) { return t.k.group === g.id; });
+      var d = ts.reduce(function (s, t) { return s + t.total; }, 0), p = ts.filter(function (t) { return t.f.paid; }).reduce(function (s, t) { return s + t.total; }, 0);
+      var pc = d ? p / d * 100 : 0;
+      return { label: g.name, value: pc, text: P.num(pc) + '%', tone: pc > 80 ? 'ok' : (pc > 50 ? '' : 'warn') };
+    }), { max: 100 });
+
+    var lateRows = [];
+    kids.forEach(function (k) { MONTHS.forEach(function (m) { var t = !k.isNew && fee(k, m); if (t && t.late) { t.k = k; lateRows.push(t); } }); });
+    P.table(P.$('#opl-late'), [
+      { key: 'n', label: 'Dziecko', val: function (t) { return t.k.name; }, html: function (t) { return P.esc(t.k.name) + '<span class="sub">' + t.M.label + '</span>'; } },
+      { key: 'kw', label: 'Kwota', num: 1, val: function (t) { return t.total; }, html: function (t) { return P.zl(t.total); } },
+      { key: 'd', label: 'Po terminie', num: 1, val: function (t) { return t.late; }, html: function (t) { return t.late + ' dni' + (t.f.reminded ? '<span class="sub">przypomniano</span>' : ''); } }
+    ], { rows: lateRows, sortKey: 'd', sortDir: -1, empty: 'Nikt nie zalega z opłatami.' });
+    P.$('#opl-remind-all').onclick = function () {
+      lateRows.forEach(function (t) { t.f.reminded = true; });
+      P.toast(lateRows.length ? 'Przypomnienia wysłane do: ' + P.n(lateRows.length, 'rodzina', 'rodziny', 'rodzin') : 'Nie ma zaległości do przypomnienia');
+      P.views.oplaty();
+    };
+  };
+
+  /* ---------- KUCHNIA ---------- */
+  var MENU = [
+    ['Owsianka na mleku z jabłkiem|gluten, mleko', 'Zupa pomidorowa z ryżem; pulpety z indyka, ziemniaki, surówka z marchewki|seler, mleko, jaja, gluten', 'Jogurt naturalny z owocami|mleko'],
+    ['Kanapki z masłem, twarożek ze szczypiorkiem, ogórek|gluten, mleko', 'Krupnik; makaron z sosem bolońskim|gluten, seler', 'Kisiel truskawkowy, biszkopt|gluten, jaja'],
+    ['Jajecznica, pieczywo, pomidor|jaja, gluten, mleko', 'Rosół z makaronem; pierogi leniwe z masłem|gluten, jaja, mleko, seler', 'Owoce sezonowe|–'],
+    ['Płatki kukurydziane z mlekiem, banan|mleko', 'Zupa ogórkowa; ryba pieczona, ziemniaki, surówka z kiszonej kapusty|ryby, mleko, seler', 'Budyń waniliowy|mleko'],
+    ['Bułka z dżemem, kakao|gluten, mleko', 'Zupa jarzynowa; naleśniki z serem i musem jabłkowym|gluten, jaja, mleko, seler', 'Chrupki kukurydziane, sok|–']
+  ];
+  P.views.kuchnia = function () {
+    var came = function (k) { return k.today.st === 'in' || k.today.st === 'out'; };
+    var meal = {
+      'Śniadanie (8:30)': function (k) { return came(k) && k.today.arr <= 8 * 60 + 30; },
+      'Obiad (11:45)': function (k) { return came(k) && (k.today.st === 'in' || k.today.out >= 12 * 60); },
+      'Podwieczorek (14:15)': function (k) { return k.today.st === 'in' || (k.today.st === 'out' && k.today.out >= 14 * 60 + 15); }
+    };
+    var names = Object.keys(meal);
+    var total = function (fn, gid) { return kids.filter(function (k) { return (!gid || k.group === gid) && fn(k); }).length; };
+    var dietKids = kids.filter(function (k) { return k.diet && came(k); });
+    var obiady = total(meal[names[1]]), zl = total(meal[names[1]], 'biedronki') + total(meal[names[1]], 'motylki');
+    var alerg = dietKids.filter(function (k) { return k.diet.alerg; }).length;
+    P.strip(P.$('#kuch-strip'), [
+      { label: 'Obiadów dziś', value: obiady, note: zl + ' żłobek, ' + (obiady - zl) + ' przedszkole' },
+      { label: 'Diety specjalne', value: dietKids.length, note: 'osobne porcje', tone: dietKids.length ? 'warn' : '' },
+      { label: 'Alergie wśród obecnych', value: alerg, note: 'sprawdź skład posiłków', tone: alerg ? 'bad' : 'ok' },
+      { label: 'Nieobecne, bez posiłku', value: kids.filter(function (k) { return k.today.st === 'abs'; }).length, note: 'zgłoszone do 8:00' }
+    ]);
+
+    var cols = [{ key: 'm', label: 'Posiłek', sort: false }].concat(GROUPS.map(function (g) {
+      return { key: g.id, label: g.name, num: 1, sort: false };
+    })).concat([{ key: 'sum', label: 'Razem', num: 1, sort: false, html: function (row) { return '<b>' + row.sum + '</b>'; } }]);
+    var rows = names.map(function (n) {
+      var row = { m: n, sum: total(meal[n]) };
+      GROUPS.forEach(function (g) { row[g.id] = total(meal[n], g.id); });
+      return row;
+    });
+    P.table(P.$('#kuch-meals'), cols, { rows: rows });
+
+    var byDiet = {};
+    dietKids.forEach(function (k) { (byDiet[k.diet.k] = byDiet[k.diet.k] || []).push(k); });
+    var dl = P.$('#kuch-diets');
+    dl.innerHTML = DIETS.filter(function (d) { return byDiet[d.k]; }).map(function (d) {
+      var ks = byDiet[d.k];
+      return '<div><h4><span>' + P.chip(d.n, d.alerg ? 'bad' : 'info') + '</span><span class="tnum">' + ks.length + ' porc.</span></h4>' +
+        '<p>' + ks.map(function (k) { return P.esc(k.name) + ' (' + G[k.group].name + ')'; }).join(', ') + '</p></div>';
+    }).join('') || '<p class="muted">Dziś nikt z obecnych nie ma diety specjalnej.</p>';
+
+    var mon = P.monday(DAY), di = (DAY.getDay() + 6) % 7;
+    var mcols = [{ key: 'm', label: '', sort: false, html: function (row) { return '<b>' + row.m + '</b>'; } }];
+    for (var i = 0; i < 5; i++) (function (i) {
+      var d = P.addDays(mon, i);
+      mcols.push({ key: 'd' + i, sort: false, label: P.dow(d).charAt(0).toUpperCase() + P.dow(d).slice(1) + ' ' + P.d(d) + (i === di ? ' ' + P.chip('dziś', 'acc') : ''),
+        html: function (row) { var p = row['d' + i].split('|'); return P.esc(p[0]) + '<span class="al">Alergeny: ' + P.esc(p[1]) + '</span>'; } });
+    })(i);
+    var mrows = ['Śniadanie', 'Obiad', 'Podwieczorek'].map(function (n, j) {
+      var row = { m: n }; for (var i = 0; i < 5; i++) row['d' + i] = MENU[i][j]; return row;
+    });
+    P.table(P.$('#kuch-menu'), mcols, { rows: mrows });
+    var tbl = P.$('#kuch-menu table'); tbl.classList.add('menu');
+    P.$$('tr', tbl).forEach(function (tr) { var c = tr.children[di + 1]; if (c) c.classList.add('today'); });
+  };
+
+  /* ---------- GRUPY ---------- */
+  P.views.grupy = function () {
+    var places = 0, taken = 0;
+    GROUPS.forEach(function (g) { places += g.limit; taken += kidsIn(g.id).length; });
+    P.strip(P.$('#grp-strip'), [
+      { label: 'Zapisane dzieci', value: taken, note: 'z ' + places + ' miejsc' },
+      { label: 'Wolne miejsca', value: places - taken, note: GROUPS.filter(function (g) { return kidsIn(g.id).length < g.limit; }).map(function (g) { return g.name; }).join(', ') || 'brak', tone: places - taken ? 'ok' : 'warn' },
+      { label: 'Lista oczekujących', value: WAIT.length, note: P.n(WAIT.filter(function (w) { return w.status === 'Nowe zgłoszenie'; }).length, 'nowe zgłoszenie', 'nowe zgłoszenia', 'nowych zgłoszeń') },
+      { label: 'Opiekunowie dziś', value: GROUPS.reduce(function (s, g) { return s + g.staff.length; }, 0), note: 'w 5 grupach' }
+    ]);
+    P.$('#grp-cards').innerHTML = GROUPS.map(function (g) {
+      var n = kidsIn(g.id).length, here = kidsIn(g.id).filter(function (k) { return k.today.st === 'in'; }).length;
+      var free = g.limit - n, pct = n / g.limit * 100;
+      return '<div class="gcard"><div class="row-between"><h3>' + g.name + '</h3>' + (free > 0 ? P.chip(free + (free === 1 ? ' wolne miejsce' : ' wolne miejsca'), 'ok') : P.chip('komplet', '')) + '</div>' +
+        '<div class="t">' + g.type + ', ' + g.age + '</div>' +
+        P.prog(pct, free > 0 ? '' : 'warn', n + ' z ' + g.limit) +
+        '<dl><dt>Opiekunowie</dt><dd>' + g.staff.join(', ') + '</dd><dt>Teraz w sali</dt><dd>' + P.n(here, 'dziecko', 'dzieci', 'dzieci') + ', ' + P.num(here / g.staff.length, 1) + ' na opiekuna</dd>' +
+        '<dt>Czesne</dt><dd>' + P.zl(g.fee) + ' + wyżywienie ' + g.meal + ' zł/dzień</dd></dl></div>';
+    }).join('');
+    P.table(P.$('#grp-wait'), [
+      { key: 'name', label: 'Dziecko', html: function (w) { return P.esc(w.name) + '<span class="sub">rodzic: ' + P.esc(w.parent) + '</span>'; } },
+      { key: 'born', label: 'Urodzone', val: function (w) { return +w.born; }, html: function (w) { return P.dy(w.born) + '<span class="sub">' + ageText(w.born) + '</span>'; } },
+      { key: 'group', label: 'Grupa', val: function (w) { return G[w.group].name; }, html: function (w) { var g = G[w.group], free = g.limit - kidsIn(g.id).length; return g.name + '<span class="sub">' + (free > 0 ? free + ' wolne' : 'brak miejsc') + '</span>'; } },
+      { key: 'since', label: 'Czeka od', val: function (w) { return +w.since; }, html: function (w) { return P.dy(w.since) + '<span class="sub">' + P.days(w.since, TODAY) + ' dni</span>'; } },
+      { key: 'status', label: 'Status', html: function (w) { return P.chip(w.status, w.status === 'Nowe zgłoszenie' ? 'info' : (w.status === 'Po rozmowie' ? 'acc' : '')); } },
+      { key: 'a', label: '', sort: false, html: function (w) { return '<button class="btn sm" data-take="' + w.id + '">Przyjmij do grupy</button>'; } }
+    ], { rows: WAIT, sortKey: 'since', empty: 'Nikt nie czeka na miejsce.' });
+    P.$$('[data-take]').forEach(function (b) {
+      b.onclick = function () {
+        var w = WAIT.filter(function (x) { return x.id === b.getAttribute('data-take'); })[0], g = G[w.group];
+        if (kidsIn(g.id).length >= g.limit) { P.toast('Grupa ' + g.name + ' jest pełna. Zwolnij miejsce albo zwiększ limit grupy.'); return; }
+        kids.push({ id: 'n' + w.id, name: w.name, girl: w.girl, group: g.id, born: w.born, mom: w.parent, dad: '', pickup: ['Mama: ' + w.parent], diet: null, fees: {}, isNew: true, today: { st: 'abs', reason: 'przyjęte dziś' } });
+        WAIT.splice(WAIT.indexOf(w), 1);
+        P.toast('Przyjęto: ' + w.name + ' do grupy ' + g.name);
+        P.views.grupy();
+      };
+    });
+  };
+
+  /* ---------- OGŁOSZENIA I ZGODY ---------- */
+  P.views.ogloszenia = function () {
+    var reads = ANN.reduce(function (s, a) { return s + a.read; }, 0), tot = ANN.reduce(function (s, a) { return s + a.total; }, 0);
+    var missing = ZGODY.reduce(function (s, z) { return s + familiesIn(z.groups).filter(function (k) { return !z.given[k.id]; }).length; }, 0);
+    P.strip(P.$('#ogl-strip'), [
+      { label: 'Ogłoszenia z ostatnich 2 tygodni', value: ANN.length, note: 'wysłane do rodziców' },
+      { label: 'Przeczytane', value: P.num(tot ? reads / tot * 100 : 0) + '%', note: reads + ' z ' + tot + ' odbiorców' },
+      { label: 'Brakujące zgody', value: missing, note: 'w ' + ZGODY.length + ' sprawach', tone: missing ? 'warn' : 'ok' }
+    ]);
+    P.$('#ogl-list').innerHTML = ANN.map(function (a) {
+      return '<div class="ann"><div class="row-between"><h3>' + P.esc(a.title) + '</h3><span class="meta">' + P.dLong(a.date) + '</span></div>' +
+        '<p>' + P.esc(a.text) + '</p>' +
+        '<div class="row-between"><span class="meta">Grupy: ' + a.groups.map(function (g) { return G[g].name; }).join(', ') + '</span>' +
+        '<div style="width:220px">' + P.prog(a.total ? a.read / a.total * 100 : 0, '', a.read + ' z ' + a.total + ' przeczytało') + '</div></div></div>';
+    }).join('');
+    P.$('#ogl-zgody').innerHTML = ZGODY.map(function (z, i) {
+      var fam = familiesIn(z.groups), miss = fam.filter(function (k) { return !z.given[k.id]; }), ok = fam.length - miss.length;
+      return '<div class="ann"><h3>' + P.esc(z.title) + '</h3><span class="meta">' + P.esc(z.when) + '; grupy: ' + z.groups.map(function (g) { return G[g].name; }).join(', ') + '</span>' +
+        P.prog(ok / fam.length * 100, miss.length ? '' : 'ok', ok + ' z ' + fam.length) +
+        (miss.length ? '<details class="miss"><summary>Brakuje ' + miss.length + ' zgód</summary><p>' + miss.map(function (k) { return P.esc(k.name) + ' (' + G[k.group].name + ')'; }).join(', ') + '</p></details>' +
+          '<div><button class="btn sm" data-z="' + i + '">Przypomnij brakującym</button></div>' : P.chip('Komplet zgód', 'ok')) + '</div>';
+    }).join('');
+    P.$$('[data-z]').forEach(function (b) {
+      b.onclick = function () { var z = ZGODY[+b.getAttribute('data-z')]; var n = familiesIn(z.groups).filter(function (k) { return !z.given[k.id]; }).length; P.toast('Przypomnienie wysłane do: ' + P.n(n, 'rodzina', 'rodziny', 'rodzin') + ', ' + z.title); };
+    });
+  };
+  P.$('#ogl-new').addEventListener('click', function () {
+    var body = '<div class="form-grid">' +
+      '<label class="field full"><span>Tytuł</span><input id="f-t" maxlength="90" placeholder="Np. Zbiórka kasztanów"></label>' +
+      '<label class="field full"><span>Treść</span><textarea id="f-x" rows="4" placeholder="Co rodzice mają wiedzieć i do kiedy"></textarea></label>' +
+      '<label class="field full"><span>Dla kogo</span><select id="f-g">' + P.options([{ v: 'all', l: 'Wszystkie grupy' }].concat(GROUPS.map(function (g) { return { v: g.id, l: 'Tylko ' + g.name }; })), 'all') + '</select></label>' +
+      '<p class="full muted small" id="f-err" style="color:var(--bad)"></p></div>';
+    P.modal({ title: 'Nowe ogłoszenie', body: body, actions: [
+      { label: 'Anuluj', ghost: true },
+      { label: 'Wyślij do rodziców', primary: true, onClick: function (close, d) {
+        var t = P.$('#f-t', d).value.trim(), x = P.$('#f-x', d).value.trim(), g = P.$('#f-g', d).value;
+        if (!t || !x) { P.$('#f-err', d).textContent = 'Wpisz tytuł i treść ogłoszenia.'; return; }
+        var groups = g === 'all' ? GROUPS.map(function (q) { return q.id; }) : [g];
+        var n = familiesIn(groups).length;
+        ANN.unshift({ title: t, text: x, date: TODAY, groups: groups, total: n, read: 0 });
+        close(); P.toast('Ogłoszenie wysłane do: ' + P.n(n, 'rodzina', 'rodziny', 'rodzin')); P.views.ogloszenia();
+      } }
+    ] });
+  });
+
+  P.initTabs();
+})();
+</script>
+</body>
+</html>

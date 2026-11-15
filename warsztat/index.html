@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Warsztat samochodowy – panel demo</title>
+<meta name="description" content="Panel demo dla warsztatu samochodowego: stanowiska na dziś, zlecenia z akceptacją klienta, części od dostawców, przechowalnia opon i przypomnienia, wyniki mechaników. Dane przykładowe.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
+<link rel="stylesheet" href="../assets/panel.css">
+<style>
+  /* Szyld z blachy ryflowanej, pod nim pomarańczowy pas */
+  body {
+    --sign-bg: #2A2D31; --sign-fg: #F1F2F3; --sign-sub: rgba(241, 242, 243, .72);
+    --sign-pattern: repeating-linear-gradient(45deg, rgba(255, 255, 255, .05) 0 2px, transparent 2px 13px), repeating-linear-gradient(-45deg, rgba(255, 255, 255, .05) 0 2px, transparent 2px 13px);
+    --sign-band: linear-gradient(#E0661F, #C4561A); --sign-band-h: 7px;
+    --accent: #A9461A; --accent-ink: #FFFFFF; --accent-soft: #F7E8DF; --accent-line: #A9461A;
+  }
+  /* Tablica rejestracyjna */
+  .plate { display: inline-flex; align-items: stretch; border: 1.5px solid #1C2329; border-radius: 4px; overflow: hidden; background: #fff; font-weight: 720; font-stretch: 88%; letter-spacing: .04em; line-height: 1; vertical-align: middle; white-space: nowrap; }
+  .plate i { font-style: normal; background: #1F4FA8; color: #fff; font-size: 9px; padding: 3px 3px 2px; display: flex; align-items: flex-end; letter-spacing: 0; }
+  .plate b { padding: 4px 7px 3px; font-size: 14px; font-weight: 720; }
+  .plate.lg b { font-size: 19px; padding: 5px 9px 4px; }
+  .plate.lg i { font-size: 10px; padding: 4px 4px 3px; }
+
+  .bays { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+  .bay { appearance: none; font: inherit; color: var(--ink); text-align: left; cursor: pointer; background: var(--surface); border: 1px solid var(--line); border-top: 5px solid #8B939B; border-radius: var(--r-box); padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 7px; min-height: 230px; }
+  .bay:hover { border-color: var(--accent-line); }
+  .bay.free { cursor: default; border-top-color: var(--line); background: transparent; border-style: dashed; }
+  .bay.st-naprawa { border-top-color: var(--accent); }
+  .bay.st-diag { border-top-color: var(--info); }
+  .bay.st-czesci, .bay.st-akcept { border-top-color: #C98A12; }
+  .bay-n { font-size: 12.5px; color: var(--ink-3); display: flex; justify-content: space-between; gap: 8px; }
+  .bay-car { font-size: 16px; font-weight: 700; }
+  .bay-job { font-size: 13.5px; color: var(--ink-2); }
+  .bay-f { margin-top: auto; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+  .bay > .plate, .bay-f > .chip { align-self: flex-start; }
+  @media (max-width: 1100px) { .bays { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 560px) { .bays { grid-template-columns: minmax(0, 1fr); } .bay { min-height: 0; } }
+</style>
+</head>
+<body>
+
+<header class="sign">
+  <div class="sign-top">
+    <a href="../index.html">Wszystkie panele</a>
+    <span class="demo-flag">Dane przykładowe</span>
+  </div>
+  <div class="sign-inner">
+    <div>
+      <h1>Twój warsztat samochodowy</h1>
+      <p class="sign-sub">Stanowiska, zlecenia z akceptacją klienta, części, opony i przypomnienia</p>
+    </div>
+    <div class="sign-meta"><strong id="sign-day"></strong><span id="sign-sub"></span></div>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="Moduły panelu">
+  <div class="tabs-inner" role="tablist">
+    <button class="tab" data-tab="stanowiska">Stanowiska</button>
+    <button class="tab" data-tab="zlecenia">Zlecenia</button>
+    <button class="tab" data-tab="czesci">Części</button>
+    <button class="tab" data-tab="opony">Opony i przypomnienia</button>
+    <button class="tab" data-tab="wyniki">Wyniki</button>
+  </div>
+</nav>
+
+<main>
+  <!-- STANOWISKA -->
+  <section data-panel="stanowiska" class="stack">
+    <div id="st-strip"></div>
+    <div class="bays" id="st-bays"></div>
+    <div class="box">
+      <div class="box-h"><h2>Auta na placu</h2><button class="btn sm primary" id="st-new">Przyjmij auto</button></div>
+      <div class="box-b flush" id="st-yard"></div>
+    </div>
+  </section>
+
+  <!-- ZLECENIA -->
+  <section data-panel="zlecenia" class="stack">
+    <div id="zl-strip"></div>
+    <div class="box">
+      <div class="box-h"><div id="zl-filter"></div><p>Kliknij zlecenie, żeby zobaczyć kosztorys</p></div>
+      <div class="box-b flush scroll-lg" id="zl-table"></div>
+    </div>
+  </section>
+
+  <!-- CZĘŚCI -->
+  <section data-panel="czesci" class="stack">
+    <div id="cz-strip"></div>
+    <div class="box">
+      <div class="box-h"><h2>Zamówione części</h2><p>dostawy na dziś i jutro</p></div>
+      <div class="box-b flush" id="cz-table"></div>
+    </div>
+    <div class="box">
+      <div class="box-h"><h2>Materiały na stanie</h2><button class="btn sm" id="cz-order">Zamów brakujące</button></div>
+      <div class="box-b flush" id="cz-stock"></div>
+    </div>
+  </section>
+
+  <!-- OPONY -->
+  <section data-panel="opony" class="stack">
+    <div id="op-strip"></div>
+    <div class="box">
+      <div class="box-h"><div id="op-filter"></div><button class="btn sm primary" id="op-sms">Wyślij SMS do nieumówionych</button></div>
+      <div class="box-b flush scroll-lg" id="op-table"></div>
+    </div>
+    <div class="box">
+      <div class="box-h"><h2>Przypomnienia na 30 dni</h2><p>badanie techniczne i wymiana oleju u stałych klientów</p></div>
+      <div class="box-b flush" id="op-rem"></div>
+    </div>
+  </section>
+
+  <!-- WYNIKI -->
+  <section data-panel="wyniki" class="stack">
+    <div id="wy-strip"></div>
+    <div class="box">
+      <div class="box-h"><h2>Mechanicy w tym miesiącu</h2><p>godziny sprzedane klientom w stosunku do godzin w pracy</p></div>
+      <div class="box-b flush" id="wy-table"></div>
+    </div>
+    <div class="cols-even">
+      <div class="box">
+        <div class="box-h"><h2>Wydajność</h2><p>kreska: cel 85%</p></div>
+        <div class="box-b"><div id="wy-bars"></div></div>
+      </div>
+      <div class="box">
+        <div class="box-h"><h2>Najczęstsze naprawy</h2><p>przychód w tym miesiącu</p></div>
+        <div class="box-b"><div id="wy-jobs"></div></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <span>Panel demo. Klienci, auta, numery rejestracyjne i kwoty są wymyślone, zmiany znikają po odświeżeniu strony.</span>
+  <a href="../index.html">Zobacz pozostałe panele</a>
+</footer>
+
+<script src="../assets/panel.js"></script>
+<script>
+(function () {
+  'use strict';
+  var r = P.rng(8821);
+  var TODAY = P.today();
+  var NOW = 11 * 60 + 40;
+  var RATE = 180;                 /* roboczogodzina netto */
+  var MARGIN = 0.25;              /* narzut na części */
+
+  /* ---------- Dane przykładowe ---------- */
+  var MECH = [
+    { id: 'kr', n: 'Krzysztof', role: 'kierownik warsztatu' },
+    { id: 'ba', n: 'Bartek', role: 'mechanik' },
+    { id: 'ro', n: 'Robert', role: 'mechanik' },
+    { id: 'ma', n: 'Mateusz', role: 'diagnosta, elektryka' }
+  ];
+  var MC = {}; MECH.forEach(function (m) { MC[m.id] = m; });
+  var BAYS = [{ id: 'p1', n: 'Podnośnik 1' }, { id: 'p2', n: 'Podnośnik 2' }, { id: 'p3', n: 'Podnośnik 3' }, { id: 'dg', n: 'Diagnostyka i geometria' }];
+  var JOBS = [
+    { n: 'Wymiana rozrządu', h: 4.5, p: 1150 }, { n: 'Klocki i tarcze, przód', h: 1.5, p: 620 }, { n: 'Serwis olejowy', h: 0.8, p: 380 },
+    { n: 'Diagnostyka komputerowa', h: 1, p: 0 }, { n: 'Wymiana sprzęgła', h: 6, p: 1900 }, { n: 'Wahacze przednie', h: 2.5, p: 780 },
+    { n: 'Amortyzatory tył', h: 1.5, p: 640 }, { n: 'Klimatyzacja: serwis', h: 1, p: 220 }, { n: 'Wymiana opon', h: 0.7, p: 0 },
+    { n: 'Geometria kół', h: 0.8, p: 0 }, { n: 'Układ wydechowy', h: 1.8, p: 520 }
+  ];
+  var JB = {}; JOBS.forEach(function (j) { JB[j.n] = j; });
+  var ST = {
+    przyjete: ['Przyjęte, czeka na wjazd', ''], diag: ['Diagnostyka', 'info'], naprawa: ['W naprawie', 'acc'], czesci: ['Czeka na części', 'warn'],
+    akcept: ['Czeka na akceptację klienta', 'warn'], gotowe: ['Gotowe do odbioru', 'ok'], odebrane: ['Odebrane', '']
+  };
+  /* [klient, auto, rejestracja, naprawa, status, stanowisko, mechanik, przyjęto (dni temu), dodatkowa praca [opis, h, części] lub null, gotowe na (godz.)] */
+  var SRC = [
+    ['Marek Wiśniewski', 'Škoda Octavia III 2016', 'EL 4K21M', 'Wymiana rozrządu', 'naprawa', 'p1', 'ba', 0, null, 15 * 60],
+    ['Joanna Krawczyk', 'Toyota Yaris 2019', 'ETM 58FA2', 'Serwis olejowy', 'akcept', 'p2', 'ro', 0, ['Wyciek z pompy wody, wymiana pompy', 1.5, 340], 13 * 60],
+    ['Firma Transbud', 'Ford Transit 2018', 'EPI 3H771', 'Wymiana sprzęgła', 'czesci', null, 'kr', 1, null, null],
+    ['Paweł Zając', 'Opel Astra J 2013', 'ESK 2C904', 'Diagnostyka komputerowa', 'diag', 'dg', 'ma', 0, null, 12 * 60 + 30],
+    ['Agnieszka Lis', 'Kia Ceed 2020', 'EBE 71R5K', 'Klocki i tarcze, przód', 'naprawa', 'p3', 'kr', 0, null, 13 * 60],
+    ['Tomasz Nowicki', 'Volkswagen Passat B8 2017', 'ETM 9W44A', 'Wahacze przednie', 'czesci', null, 'ba', 1, null, null],
+    ['Ewa Zielińska', 'Renault Clio IV 2015', 'EL 7N303', 'Klimatyzacja: serwis', 'gotowe', null, 'ma', 0, null, 10 * 60],
+    ['Grzegorz Kubiak', 'Audi A4 B8 2012', 'EZG 1F28C', 'Układ wydechowy', 'gotowe', null, 'ro', 1, null, null],
+    ['Monika Wójcik', 'Hyundai i30 2018', 'ERW 4402K', 'Amortyzatory tył', 'przyjete', null, 'ro', 0, null, null],
+    ['Piotr Mazur', 'Dacia Duster 2021', 'ETM A9112', 'Geometria kół', 'przyjete', null, 'ma', 0, null, null],
+    ['Firma Agroserwis', 'Fiat Ducato 2016', 'EPI 6K530', 'Diagnostyka komputerowa', 'akcept', null, 'ma', 1, ['Wtryskiwacz cylindra 2, regeneracja', 2, 650], null],
+    ['Karolina Dąbrowska', 'Mazda 3 2014', 'EL 2HX19', 'Serwis olejowy', 'odebrane', null, 'ba', 1, null, null],
+    ['Jan Kowalczyk', 'Seat Leon 2017', 'ETM 4C228', 'Wymiana opon', 'odebrane', null, 'kr', 0, null, null],
+    ['Adam Sikora', 'BMW 320d E90 2010', 'ESK 9P114', 'Wahacze przednie', 'odebrane', null, 'ro', 2, null, null]
+  ];
+  var ZL = SRC.map(function (s, i) {
+    var j = JB[s[3]];
+    return { id: 'z' + i, nr: 'ZL/' + (TODAY.getMonth() + 1) + '/' + (212 + i), cl: s[0], car: s[1], plate: s[2], job: s[3], st: s[4], bay: s[5], mech: s[6], inn: P.addDays(TODAY, -s[7]),
+      extra: s[8] ? { n: s[8][0], h: s[8][1], p: s[8][2], sent: NOW - P.int(r, 25, 95) } : null, ready: s[9], h: j.h, parts: j.p, sms: s[4] === 'gotowe' };
+  });
+  function zl(id) { return ZL.filter(function (z) { return z.id === id; })[0]; }
+  function cost(z) { var h = z.h + (z.extra && z.extraOk ? z.extra.h : 0), p = z.parts + (z.extra && z.extraOk ? z.extra.p : 0); return { lab: h * RATE, parts: p * (1 + MARGIN), tot: h * RATE + p * (1 + MARGIN) }; }
+
+  /* części zamówione */
+  var PARTS = [
+    { z: 'z2', n: 'Zestaw sprzęgła z kołem dwumasowym', sup: 'ASO Ford', eta: [1, 9 * 60], st: 'droga', buy: 1900 },
+    { z: 'z5', n: 'Wahacze przednie, komplet', sup: 'Hurtownia A', eta: [0, 10 * 60], st: 'opozn', buy: 780 },
+    { z: 'z0', n: 'Zestaw rozrządu z pompą wody', sup: 'Hurtownia A', eta: [0, 8 * 60], st: 'jest', buy: 1150 },
+    { z: 'z4', n: 'Klocki i tarcze przód', sup: 'Hurtownia B', eta: [0, 8 * 60 + 30], st: 'jest', buy: 620 },
+    { z: 'z8', n: 'Amortyzatory tył, para', sup: 'Hurtownia B', eta: [0, 13 * 60], st: 'droga', buy: 640 },
+    { z: 'z1', n: 'Pompa wody (po akceptacji)', sup: 'Hurtownia A', eta: null, st: 'wstrzym', buy: 340 }
+  ];
+  var PST = { droga: ['W drodze', 'info'], jest: ['Dostarczone', 'ok'], opozn: ['Opóźnione', 'bad'], wstrzym: ['Czeka na akceptację', 'warn'] };
+  var STOCK = [
+    { n: 'Olej 5W30, 1 l', stan: 46, min: 30, u: 'l' }, { n: 'Olej 5W40, 1 l', stan: 12, min: 20, u: 'l' }, { n: 'Filtr oleju (popularne)', stan: 18, min: 10, u: 'szt.' },
+    { n: 'Płyn hamulcowy DOT4, 1 l', stan: 4, min: 6, u: 'szt.' }, { n: 'Czynnik klimatyzacji R1234yf', stan: 3.2, min: 2, u: 'kg' }, { n: 'Płyn do spryskiwaczy zimowy, 5 l', stan: 7, min: 15, u: 'szt.' },
+    { n: 'Żarówki H7', stan: 14, min: 10, u: 'szt.' }, { n: 'Wycieraczki (komplet)', stan: 5, min: 6, u: 'kpl.' }
+  ];
+
+  /* przechowalnia opon */
+  var M = TODAY.getMonth(), WINTER = M >= 9 || M <= 2;
+  var TARGET = WINTER ? 'zimowe' : 'letnie';
+  var NAMES = ['Anna Nowak', 'Piotr Lis', 'Katarzyna Wójcik', 'Michał Kowalczyk', 'Joanna Zielińska', 'Łukasz Szymański', 'Magdalena Dąbrowska', 'Jakub Kozłowski', 'Ewelina Jankowska', 'Adrian Mazur',
+    'Kamil Krawczyk', 'Justyna Piotrowska', 'Bartosz Grabowski', 'Beata Pawłowska', 'Dawid Michalski', 'Iwona Nowicka', 'Wojciech Adamczyk', 'Sylwia Dudek', 'Filip Zając', 'Weronika Wieczorek',
+    'Rafał Król', 'Izabela Majewska', 'Edyta Olszewska', 'Teresa Malinowska', 'Konrad Jaworski', 'Zuzanna Górska', 'Mariusz Witkowski', 'Paulina Walczak'];
+  var SIZES = ['195/65 R15', '205/55 R16', '225/45 R17', '215/60 R16', '225/40 R18', '185/65 R15'];
+  var CARS = ['Toyota Corolla', 'Škoda Fabia', 'VW Golf VII', 'Opel Corsa', 'Ford Focus', 'Kia Sportage', 'Hyundai Tucson', 'Renault Megane', 'Škoda Superb', 'Mazda CX-5'];
+  var TY = NAMES.map(function (n, i) {
+    var stored = i % 4 === 3 ? (WINTER ? 'letnie' : 'zimowe') : TARGET;
+    var appt = stored === TARGET && r() < 0.45 ? P.addDays(TODAY, P.int(r, 0, 12)) : null;
+    if (appt && P.isWeekend(appt)) appt = P.addDays(appt, 2);
+    return { id: 't' + i, cl: n, car: P.pick(r, CARS), plate: P.pick(r, ['EL ', 'ETM ', 'EPI ', 'ESK ']) + P.int(r, 1, 9) + String.fromCharCode(65 + P.int(r, 0, 25)) + P.int(r, 100, 999), size: P.pick(r, SIZES),
+      season: stored, tread: Math.round((2.6 + r() * 5.2) * 10) / 10, loc: 'R' + P.int(r, 1, 6) + '-' + P.int(r, 1, 24), appt: appt, sms: false };
+  });
+  var REM = NAMES.slice(0, 12).map(function (n, i) {
+    return { cl: n, car: CARS[i % CARS.length], what: i % 3 === 0 ? 'Wymiana oleju' : 'Badanie techniczne', d: P.addDays(TODAY, P.int(r, 2, 30)), last: i % 3 === 0 ? 'ostatnio ' + P.num(P.int(r, 13, 16) * 1000) + ' km temu' : 'stacja kontroli pojazdów obok', sent: false };
+  });
+
+  /* wyniki miesiąca */
+  var WD = Math.max(1, Math.round(P.workdaysInMonth(TODAY.getFullYear(), M) * Math.min(1, TODAY.getDate() / 30) + 8));
+  var EFF = { kr: 0.78, ba: 0.92, ro: 0.86, ma: 0.71 };
+  var RES = MECH.map(function (m) { var att = WD * 8, sold = Math.round(att * EFF[m.id] * 10) / 10; return { m: m, att: att, sold: sold, lab: sold * RATE, parts: Math.round(sold * RATE * (0.7 + r() * 0.5)) }; });
+  var JOBREV = JOBS.map(function (j) { var n = P.int(r, 2, 22); return { n: j.n, cnt: n, rev: Math.round(n * (j.h * RATE + j.p * (1 + MARGIN))) }; }).sort(function (a, b) { return b.rev - a.rev; }).slice(0, 7);
+
+  P.$('#sign-day').textContent = P.dayTitle(TODAY);
+  P.$('#sign-sub').textContent = MECH.length + ' mechaników, ' + BAYS.length + ' stanowiska, roboczogodzina ' + RATE + ' zł netto';
+
+  function plate(p, lg) { return '<span class="plate' + (lg ? ' lg' : '') + '"><i>PL</i><b>' + P.esc(p) + '</b></span>'; }
+  function chip(z) { var s = ST[z.st]; return P.chip(s[0], s[1]); }
+  function open() { return ZL.filter(function (z) { return z.st !== 'odebrane'; }); }
+
+  /* ---------- STANOWISKA ---------- */
+  P.views.stanowiska = function () {
+    var o = open(), wait = o.filter(function (z) { return z.st === 'akcept'; }), ready = o.filter(function (z) { return z.st === 'gotowe'; }), parts = o.filter(function (z) { return z.st === 'czesci'; });
+    P.strip(P.$('#st-strip'), [
+      { label: 'Auta w warsztacie', value: o.length, note: o.filter(function (z) { return z.bay; }).length + ' na stanowiskach, reszta na placu' },
+      { label: 'Czeka na akceptację', value: wait.length, note: wait.length ? 'klient nie odpisał na kosztorys' : 'nikt', tone: wait.length ? 'warn' : 'ok' },
+      { label: 'Czeka na części', value: parts.length, note: parts.map(function (z) { return z.plate; }).join(', ') || 'brak', tone: parts.length ? 'warn' : '' },
+      { label: 'Gotowe do odbioru', value: ready.length, note: ready.filter(function (z) { return !z.sms; }).length ? 'nie wszyscy dostali SMS' : 'klienci powiadomieni', tone: ready.length ? 'ok' : '' }
+    ]);
+    P.$('#st-bays').innerHTML = BAYS.map(function (b) {
+      var z = o.filter(function (x) { return x.bay === b.id; })[0];
+      if (!z) return '<div class="bay free"><div class="bay-n"><span>' + b.n + '</span></div><div class="bay-car">Wolne</div><div class="bay-job">Można wprowadzić auto z placu.</div></div>';
+      var pct = z.ready ? Math.max(5, Math.min(95, 100 - (z.ready - NOW) / (z.h * 60) * 100)) : 40;
+      return '<button class="bay st-' + z.st + '" data-id="' + z.id + '"><div class="bay-n"><span>' + b.n + '</span><span>' + MC[z.mech].n + '</span></div>' + plate(z.plate, true) +
+        '<div class="bay-car">' + P.esc(z.car) + '</div><div class="bay-job">' + P.esc(z.job) + (z.extra ? '<br>+ ' + P.esc(z.extra.n.toLowerCase()) : '') + '</div>' +
+        '<div class="bay-f">' + chip(z) + (z.st === 'akcept' ? '<span>Kosztorys wysłany ' + P.hm(z.extra.sent) + ', czeka ' + P.n(NOW - z.extra.sent, 'minutę', 'minuty', 'minut') + '</span>' : P.prog(pct, '', z.ready ? 'do ' + P.hm(z.ready) : '')) + '</div></button>';
+    }).join('');
+    P.$$('#st-bays .bay[data-id]').forEach(function (b) { b.onclick = function () { openZl(zl(b.getAttribute('data-id'))); }; });
+    var yard = o.filter(function (z) { return !z.bay; });
+    P.table(P.$('#st-yard'), [
+      { key: 'plate', label: 'Auto', html: function (z) { return plate(z.plate) + '<span class="sub">' + P.esc(z.car) + '</span>'; } },
+      { key: 'cl', label: 'Klient' },
+      { key: 'job', label: 'Naprawa', html: function (z) { return P.esc(z.job) + (z.extra ? '<span class="sub">+ ' + P.esc(z.extra.n.toLowerCase()) + '</span>' : ''); } },
+      { key: 'st', label: 'Status', val: function (z) { return Object.keys(ST).indexOf(z.st); }, html: chip },
+      { key: 'inn', label: 'Na placu', val: function (z) { return +z.inn; }, html: function (z) { var d = P.days(z.inn, TODAY); return d ? P.n(d, 'dzień', 'dni', 'dni') : 'od dziś'; } },
+      { key: 'a', label: '', sort: false, html: function (z) { return '<div class="acts">' + actBtn(z) + '</div>'; } }
+    ], { rows: yard, sortKey: 'st', onRow: openZl });
+    wire();
+  };
+  function actBtn(z) {
+    if (z.st === 'przyjete') return '<button class="btn sm" data-bay="' + z.id + '">Na stanowisko</button>';
+    if (z.st === 'gotowe') return z.sms ? '<button class="btn sm" data-out="' + z.id + '">Wydaj auto</button>' : '<button class="btn sm" data-sms="' + z.id + '">Powiadom klienta</button>';
+    if (z.st === 'akcept') return '<button class="btn sm" data-ok="' + z.id + '">Klient zaakceptował</button>';
+    return '';
+  }
+  function wire() {
+    P.$$('[data-bay]').forEach(function (b) { b.onclick = function () {
+      var z = zl(b.getAttribute('data-bay')), free = BAYS.filter(function (x) { return !open().some(function (o) { return o.bay === x.id; }); });
+      var pick = free.filter(function (x) { return (z.job === 'Geometria kół' || z.job.indexOf('Diagnostyka') === 0) ? x.id === 'dg' : x.id !== 'dg'; })[0];
+      if (!pick) { P.toast('Brak wolnego stanowiska dla tej naprawy'); return; }
+      z.bay = pick.id; z.st = z.job.indexOf('Diagnostyka') === 0 ? 'diag' : 'naprawa'; z.ready = Math.ceil((NOW + z.h * 60) / 15) * 15; P.toast(z.plate + ' na stanowisku: ' + pick.n); P.refresh(); }; });
+    P.$$('[data-sms]').forEach(function (b) { b.onclick = function () { var z = zl(b.getAttribute('data-sms')); z.sms = true; P.toast('SMS wysłany: ' + z.cl + ', auto ' + z.plate + ' gotowe, do zapłaty ' + P.zl(cost(z).tot * 1.23)); P.refresh(); }; });
+    P.$$('[data-out]').forEach(function (b) { b.onclick = function () { var z = zl(b.getAttribute('data-out')); z.st = 'odebrane'; z.bay = null; P.toast('Wydano ' + z.plate + ', zapłacono ' + P.zl(cost(z).tot * 1.23)); P.refresh(); }; });
+    P.$$('[data-ok]').forEach(function (b) { b.onclick = function () { accept(zl(b.getAttribute('data-ok'))); }; });
+  }
+  function accept(z) {
+    z.extraOk = true; z.st = z.bay ? 'naprawa' : 'czesci'; z.h += 0; var p = PARTS.filter(function (x) { return x.z === z.id && x.st === 'wstrzym'; })[0];
+    if (p) { p.st = 'droga'; p.eta = [0, Math.min(17 * 60, NOW + 90)]; z.st = 'czesci'; }
+    else if (z.extra && z.extra.p) PARTS.push({ z: z.id, n: z.extra.n, sup: 'Hurtownia A', eta: [1, 8 * 60], st: 'droga', buy: z.extra.p }), z.st = 'czesci';
+    P.toast('Akceptacja: ' + z.cl + ', ' + z.extra.n.toLowerCase() + (p || (z.extra && z.extra.p) ? '. Części zamówione' : '')); P.refresh();
+  }
+  function openZl(z) {
+    var c = cost(z);
+    var body = '<div style="margin-bottom:12px">' + plate(z.plate, true) + '</div><dl class="kv"><dt>Auto</dt><dd>' + P.esc(z.car) + '</dd><dt>Klient</dt><dd>' + P.esc(z.cl) + '</dd><dt>Status</dt><dd>' + chip(z) + '</dd><dt>Mechanik</dt><dd>' + MC[z.mech].n + '</dd><dt>Przyjęto</dt><dd>' + P.d(z.inn) + '</dd></dl>' +
+      '<div class="tbl-wrap" style="margin-top:14px"><table class="tbl"><tbody>' +
+      '<tr><td>' + P.esc(z.job) + ', robocizna ' + P.num(z.h, 1) + ' h</td><td class="num">' + P.zl(z.h * RATE) + '</td></tr>' +
+      (z.parts ? '<tr><td>Części do: ' + P.esc(z.job.toLowerCase()) + '</td><td class="num">' + P.zl(z.parts * (1 + MARGIN)) + '</td></tr>' : '') +
+      (z.extra ? '<tr><td>' + (z.extraOk ? '' : '<b>Do akceptacji:</b> ') + P.esc(z.extra.n) + ', ' + P.num(z.extra.h, 1) + ' h + części</td><td class="num">' + P.zl(z.extra.h * RATE + z.extra.p * (1 + MARGIN)) + '</td></tr>' : '') +
+      '</tbody><tfoot><tr><td>Razem netto' + (z.extra && !z.extraOk ? ' (bez prac do akceptacji)' : '') + '</td><td class="num">' + P.zl(c.tot) + '</td></tr><tr><td>Brutto</td><td class="num">' + P.zl(c.tot * 1.23) + '</td></tr></tfoot></table></div>';
+    var acts = [{ label: 'Zamknij', ghost: true }];
+    if (z.st === 'akcept') {
+      acts.push({ label: 'Wyślij kosztorys ponownie', onClick: function (close) { z.extra.sent = NOW; close(); P.toast('Kosztorys wysłany SMS-em: ' + z.cl); P.refresh(); } });
+      acts.push({ label: 'Klient zaakceptował', primary: true, onClick: function (close) { close(); accept(z); } });
+    }
+    if (z.st === 'naprawa' || z.st === 'diag') acts.push({ label: 'Gotowe, powiadom klienta', primary: true, onClick: function (close) { z.st = 'gotowe'; z.bay = null; z.sms = true; close(); P.toast('Gotowe: ' + z.plate + '. SMS do klienta wysłany'); P.refresh(); } });
+    P.modal({ title: z.nr, sub: P.esc(z.job), body: body, actions: acts });
+  }
+  P.$('#st-new').addEventListener('click', function () {
+    var body = '<div class="form-grid"><label class="field"><span>Numer rejestracyjny</span><input id="n-p" placeholder="Np. EL 12345" style="text-transform:uppercase"></label>' +
+      '<label class="field"><span>Auto</span><input id="n-c" placeholder="Np. Toyota Auris 2015"></label>' +
+      '<label class="field"><span>Klient</span><input id="n-k" placeholder="Imię i nazwisko"></label>' +
+      '<label class="field"><span>Co robimy</span><select id="n-j">' + P.options(JOBS.map(function (j) { return { v: j.n, l: j.n + ' (' + P.num(j.h, 1) + ' h)' }; }), 'Serwis olejowy') + '</select></label>' +
+      '<label class="field"><span>Mechanik</span><select id="n-m">' + P.options(MECH.map(function (m) { return { v: m.id, l: m.n }; }), 'ro') + '</select></label>' +
+      '<p class="full small" id="n-err" style="color:var(--bad)"></p></div>';
+    P.modal({ title: 'Przyjmij auto', body: body, actions: [
+      { label: 'Anuluj', ghost: true },
+      { label: 'Przyjmij auto', primary: true, onClick: function (close, d) {
+        var p = P.$('#n-p', d).value.trim().toUpperCase(), k = P.$('#n-k', d).value.trim();
+        if (!p || p.length < 4) { P.$('#n-err', d).textContent = 'Wpisz numer rejestracyjny.'; return; }
+        if (!k) { P.$('#n-err', d).textContent = 'Wpisz klienta, żeby wysłać mu SMS, gdy auto będzie gotowe.'; return; }
+        var j = JB[P.$('#n-j', d).value];
+        ZL.push({ id: 'z' + ZL.length, nr: 'ZL/' + (M + 1) + '/' + (212 + ZL.length), cl: k, car: P.$('#n-c', d).value.trim() || 'auto klienta', plate: p, job: j.n, st: 'przyjete', bay: null, mech: P.$('#n-m', d).value, inn: TODAY, extra: null, ready: null, h: j.h, parts: j.p, sms: false });
+        close(); P.toast('Przyjęto ' + p + ': ' + j.n.toLowerCase()); P.refresh();
+      } }
+    ] });
+  });
+
+  /* ---------- ZLECENIA ---------- */
+  var zlF = 'open';
+  P.views.zlecenia = function () {
+    var o = open(), val = o.reduce(function (s, z) { return s + cost(z).tot; }, 0);
+    var done = ZL.filter(function (z) { return z.st === 'odebrane'; });
+    var waitV = o.filter(function (z) { return z.st === 'akcept'; }).reduce(function (s, z) { return s + z.extra.h * RATE + z.extra.p * (1 + MARGIN); }, 0);
+    P.strip(P.$('#zl-strip'), [
+      { label: 'Otwarte zlecenia', value: o.length, note: P.zl(val) + ' netto' },
+      { label: 'Prace do akceptacji', value: P.zl(waitV), note: 'dodatkowe naprawy znalezione przy aucie', tone: waitV ? 'warn' : '' },
+      { label: 'Wydane w ostatnich dniach', value: done.length, note: P.zl(done.reduce(function (s, z) { return s + cost(z).tot; }, 0)) + ' netto' },
+      { label: 'Średnie zlecenie', value: P.zl(ZL.reduce(function (s, z) { return s + cost(z).tot; }, 0) / ZL.length), note: 'netto' }
+    ]);
+    P.seg(P.$('#zl-filter'), [{ v: 'open', l: 'Otwarte' }, { v: 'akcept', l: 'Do akceptacji' }, { v: 'done', l: 'Wydane' }, { v: 'all', l: 'Wszystkie' }], zlF, function (v) { zlF = v; P.views.zlecenia(); });
+    var rows = ZL.filter(function (z) { return zlF === 'all' || (zlF === 'open' ? z.st !== 'odebrane' : zlF === 'done' ? z.st === 'odebrane' : z.st === 'akcept'); });
+    P.table(P.$('#zl-table'), [
+      { key: 'nr', label: 'Zlecenie', html: function (z) { return '<b>' + z.nr + '</b><span class="sub">przyjęte ' + P.d(z.inn) + '</span>'; } },
+      { key: 'plate', label: 'Auto', html: function (z) { return plate(z.plate) + '<span class="sub">' + P.esc(z.car) + '</span>'; } },
+      { key: 'cl', label: 'Klient' },
+      { key: 'job', label: 'Naprawa', html: function (z) { return P.esc(z.job) + (z.extra ? '<span class="sub">' + (z.extraOk ? 'zaakceptowano: ' : 'do akceptacji: ') + P.esc(z.extra.n.toLowerCase()) + '</span>' : ''); } },
+      { key: 'mech', label: 'Mechanik', val: function (z) { return MC[z.mech].n; }, html: function (z) { return MC[z.mech].n; } },
+      { key: 'v', label: 'Wartość netto', num: 1, val: function (z) { return cost(z).tot; }, html: function (z) { var c = cost(z); return P.zl(c.tot) + '<span class="sub">robocizna ' + P.zl(c.lab) + '</span>'; } },
+      { key: 'st', label: 'Status', val: function (z) { return Object.keys(ST).indexOf(z.st); }, html: chip },
+      { key: 'a', label: '', sort: false, html: function (z) { return '<div class="acts">' + actBtn(z) + '</div>'; } }
+    ], { rows: rows, sortKey: 'st', onRow: openZl, empty: 'Brak zleceń w tym widoku.' });
+    wire();
+  };
+
+  /* ---------- CZĘŚCI ---------- */
+  P.views.czesci = function () {
+    var today = PARTS.filter(function (p) { return p.eta && p.eta[0] === 0 && p.st === 'droga'; }), late = PARTS.filter(function (p) { return p.st === 'opozn'; });
+    var low = STOCK.filter(function (s) { return s.stan < s.min; });
+    var marg = PARTS.reduce(function (s, p) { return s + p.buy * MARGIN; }, 0);
+    P.strip(P.$('#cz-strip'), [
+      { label: 'Dostawy jeszcze dziś', value: today.length, note: today.map(function (p) { return P.hm(p.eta[1]) + ' ' + p.sup; }).join(', ') || 'brak' },
+      { label: 'Opóźnione', value: late.length, note: late.map(function (p) { return p.n.toLowerCase() + ' do ' + zl(p.z).plate; }).join(', ') || 'brak', tone: late.length ? 'bad' : 'ok' },
+      { label: 'Materiały poniżej minimum', value: low.length, note: low.slice(0, 2).map(function (s) { return s.n.split(',')[0]; }).join(', ') + (low.length > 2 ? '…' : ''), tone: low.length ? 'warn' : 'ok' },
+      { label: 'Marża na zamówionych częściach', value: P.zl(marg), note: 'narzut ' + P.num(MARGIN * 100) + '%' }
+    ]);
+    P.table(P.$('#cz-table'), [
+      { key: 'n', label: 'Część', html: function (p) { return '<b>' + P.esc(p.n) + '</b><span class="sub">' + p.sup + '</span>'; } },
+      { key: 'z', label: 'Do auta', val: function (p) { return zl(p.z).plate; }, html: function (p) { var z = zl(p.z); return plate(z.plate) + '<span class="sub">' + P.esc(z.job) + '</span>'; } },
+      { key: 'eta', label: 'Dostawa', val: function (p) { return p.eta ? p.eta[0] * 2000 + p.eta[1] : 1e9; }, html: function (p) { return p.eta ? (p.st === 'opozn' ? 'miało być ' : '') + (p.eta[0] ? 'jutro ' : 'dziś ') + P.hm(p.eta[1]) : '<span class="muted">nie zamówiono</span>'; } },
+      { key: 'buy', label: 'Zakup / dla klienta', num: 1, html: function (p) { return P.zl(p.buy) + '<span class="sub">' + P.zl(p.buy * (1 + MARGIN)) + '</span>'; } },
+      { key: 'st', label: 'Status', val: function (p) { return ['opozn', 'wstrzym', 'droga', 'jest'].indexOf(p.st); }, html: function (p) { return P.chip(PST[p.st][0], PST[p.st][1]); } },
+      { key: 'a', label: '', sort: false, html: function (p) { return p.st === 'droga' || p.st === 'opozn' ? '<button class="btn sm" data-got="' + PARTS.indexOf(p) + '">Przyjęto</button>' : ''; } }
+    ], { rows: PARTS, sortKey: 'st' });
+    P.$$('[data-got]').forEach(function (b) { b.onclick = function () {
+      var p = PARTS[+b.getAttribute('data-got')], z = zl(p.z); p.st = 'jest';
+      var waiting = PARTS.some(function (x) { return x.z === z.id && x.st !== 'jest'; });
+      if (z.st === 'czesci' && !waiting) { z.st = 'przyjete'; P.toast('Części są. ' + z.plate + ' może wjechać na stanowisko'); } else P.toast('Przyjęto: ' + p.n.toLowerCase());
+      P.refresh(); }; });
+    P.table(P.$('#cz-stock'), [
+      { key: 'n', label: 'Materiał' },
+      { key: 'stan', label: 'Stan', num: 1, html: function (s) { return P.num(s.stan, s.stan % 1 ? 1 : 0) + ' ' + s.u + '<span class="sub">min. ' + s.min + '</span>'; } },
+      { key: 'st', label: 'Status', val: function (s) { return s.stan / s.min; }, html: function (s) { return s.stan < s.min ? P.chip('Zamów', 'bad') : (s.stan < s.min * 1.3 ? P.chip('Kończy się', 'warn') : P.chip('W porządku', 'ok')); } }
+    ], { rows: STOCK, sortKey: 'st' });
+  };
+  P.$('#cz-order').addEventListener('click', function () { var low = STOCK.filter(function (s) { return s.stan < s.min; }); low.forEach(function (s) { s.stan = s.min * 2; }); P.toast(low.length ? 'Zamówiono: ' + low.map(function (s) { return s.n.split(',')[0]; }).join(', ') : 'Wszystko jest na stanie'); P.refresh(); });
+
+  /* ---------- OPONY I PRZYPOMNIENIA ---------- */
+  var opF = 'todo';
+  function worn(t) { return t.tread < (t.season === 'zimowe' ? 4 : 3); }
+  P.views.opony = function () {
+    var todo = TY.filter(function (t) { return t.season === TARGET; }), noAppt = todo.filter(function (t) { return !t.appt; }), wornL = TY.filter(worn);
+    var week = todo.filter(function (t) { return t.appt && P.days(TODAY, t.appt) < 7; });
+    P.strip(P.$('#op-strip'), [
+      { label: 'Do wymiany na ' + TARGET, value: todo.length, note: 'kompletów w przechowalni' },
+      { label: 'Nieumówieni', value: noAppt.length, note: noAppt.filter(function (t) { return t.sms; }).length + ' dostało już SMS', tone: noAppt.length ? 'warn' : 'ok' },
+      { label: 'Wymiany w 7 dni', value: week.length, note: P.n(week.length * 0.7, 'roboczogodzina', 'roboczogodziny', 'roboczogodzin') },
+      { label: 'Opony do wymiany na nowe', value: wornL.length, note: 'za płytki bieżnik, warto zaproponować', tone: wornL.length ? 'warn' : '' }
+    ]);
+    P.seg(P.$('#op-filter'), [{ v: 'todo', l: 'Do wymiany na ' + TARGET }, { v: 'worn', l: 'Płytki bieżnik' }, { v: 'all', l: 'Cała przechowalnia' }], opF, function (v) { opF = v; P.views.opony(); });
+    var rows = TY.filter(function (t) { return opF === 'all' || (opF === 'worn' ? worn(t) : t.season === TARGET); });
+    P.table(P.$('#op-table'), [
+      { key: 'cl', label: 'Klient', html: function (t) { return '<b>' + P.esc(t.cl) + '</b><span class="sub">' + P.esc(t.car) + '</span>'; } },
+      { key: 'plate', label: 'Auto', html: function (t) { return plate(t.plate); } },
+      { key: 'size', label: 'Opony', html: function (t) { return t.size + '<span class="sub">' + t.season + '</span>'; } },
+      { key: 'tread', label: 'Bieżnik', num: 1, html: function (t) { return P.num(t.tread, 1) + ' mm' + (worn(t) ? '<span class="sub">do wymiany</span>' : ''); } },
+      { key: 'loc', label: 'Miejsce' },
+      { key: 'appt', label: 'Wizyta', val: function (t) { return t.appt ? +t.appt : (t.sms ? 1e13 : 2e13); }, html: function (t) { return t.appt ? P.dowS(t.appt) + ' ' + P.d(t.appt) + '<span class="sub">' + P.rel(t.appt) + '</span>' : (t.season === TARGET ? (t.sms ? P.chip('SMS wysłany', 'info') : P.chip('Nieumówiony', 'warn')) : '<span class="muted">na kolejny sezon</span>'); } },
+      { key: 'a', label: '', sort: false, html: function (t) { return t.season === TARGET && !t.appt ? '<button class="btn sm" data-tsms="' + t.id + '">SMS z terminem</button>' : ''; } }
+    ], { rows: rows, sortKey: 'appt', empty: 'Brak opon w tym widoku.' });
+    P.$$('[data-tsms]').forEach(function (b) { b.onclick = function () { var t = TY.filter(function (x) { return x.id === b.getAttribute('data-tsms'); })[0]; t.sms = true; P.toast('SMS z propozycją terminu wysłany: ' + t.cl); P.refresh(); }; });
+    P.table(P.$('#op-rem'), [
+      { key: 'd', label: 'Kiedy', val: function (x) { return +x.d; }, html: function (x) { return P.d(x.d) + '<span class="sub">' + P.rel(x.d) + '</span>'; } },
+      { key: 'what', label: 'Co', html: function (x) { return x.what + '<span class="sub">' + x.last + '</span>'; } },
+      { key: 'cl', label: 'Klient', html: function (x) { return P.esc(x.cl) + '<span class="sub">' + P.esc(x.car) + '</span>'; } },
+      { key: 'a', label: '', sort: false, html: function (x, i) { return x.sent ? P.chip('Przypomniano', 'ok') : '<button class="btn sm" data-rem="' + REM.indexOf(x) + '">Przypomnij SMS-em</button>'; } }
+    ], { rows: REM, sortKey: 'd' });
+    P.$$('[data-rem]').forEach(function (b) { b.onclick = function () { var x = REM[+b.getAttribute('data-rem')]; x.sent = true; P.toast('Przypomnienie wysłane: ' + x.cl + ', ' + x.what.toLowerCase()); P.refresh(); }; });
+  };
+  P.$('#op-sms').addEventListener('click', function () { var n = 0; TY.forEach(function (t) { if (t.season === TARGET && !t.appt && !t.sms) { t.sms = true; n++; } }); P.toast(n ? 'SMS z propozycją terminu wysłany do: ' + P.n(n, 'klient', 'klientów', 'klientów') : 'Wszyscy nieumówieni dostali już SMS'); P.refresh(); });
+
+  /* ---------- WYNIKI ---------- */
+  P.views.wyniki = function () {
+    var lab = RES.reduce(function (s, x) { return s + x.lab; }, 0), parts = RES.reduce(function (s, x) { return s + x.parts; }, 0);
+    var att = RES.reduce(function (s, x) { return s + x.att; }, 0), sold = RES.reduce(function (s, x) { return s + x.sold; }, 0);
+    P.strip(P.$('#wy-strip'), [
+      { label: 'Przychód w miesiącu', value: P.zl(lab + parts), note: 'netto, robocizna i części' },
+      { label: 'Robocizna', value: P.zl(lab), note: P.num(sold, 1) + ' h po ' + RATE + ' zł' },
+      { label: 'Marża na częściach', value: P.zl(parts * MARGIN / (1 + MARGIN)), note: 'z ' + P.zl(parts) + ' sprzedaży części' },
+      { label: 'Wydajność warsztatu', value: P.num(sold / att * 100) + '%', note: 'godziny sprzedane z godzin w pracy', tone: sold / att >= 0.85 ? 'ok' : 'warn' }
+    ]);
+    P.table(P.$('#wy-table'), [
+      { key: 'n', label: 'Mechanik', val: function (x) { return x.m.n; }, html: function (x) { return '<b>' + x.m.n + '</b><span class="sub">' + x.m.role + '</span>'; } },
+      { key: 'att', label: 'W pracy', num: 1, html: function (x) { return P.num(x.att) + ' h'; } },
+      { key: 'sold', label: 'Sprzedane', num: 1, html: function (x) { return P.num(x.sold, 1) + ' h'; } },
+      { key: 'eff', label: 'Wydajność', num: 1, val: function (x) { return x.sold / x.att; }, html: function (x) { return P.num(x.sold / x.att * 100) + '%'; } },
+      { key: 'lab', label: 'Robocizna', num: 1, html: function (x) { return P.zl(x.lab); } },
+      { key: 'parts', label: 'Części', num: 1, html: function (x) { return P.zl(x.parts); } }
+    ], { rows: RES, sortKey: 'eff', sortDir: -1 });
+    P.bars(P.$('#wy-bars'), RES.map(function (x) { var p = x.sold / x.att * 100; return { label: x.m.n, value: p, text: P.num(p) + '%', tone: p >= 85 ? 'ok' : (p < 75 ? 'warn' : ''), mark: 85, markTitle: 'cel 85%' }; }), { max: 100 });
+    P.bars(P.$('#wy-jobs'), JOBREV.map(function (j) { return { label: j.n, value: j.rev, text: P.zl(j.rev) + ', ' + j.cnt + ' razy' }; }));
+  };
+
+  P.initTabs();
+})();
+</script>
+</body>
+</html>
