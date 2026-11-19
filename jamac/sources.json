@@ -1,0 +1,380 @@
+{
+  "retrieved_date": "2026-11-19",
+  "origin": "https://jamac.pl/",
+  "scope": "Public original brand/product assets for non-transactional homepage concept.",
+  "logo": {
+    "preferred": "logo-hq.jpg",
+    "dimensions": [
+      1053,
+      289
+    ],
+    "source_url": "https://jamac.pl/wp-content/uploads/2020/04/cropped-jamac_logo_puste.jpg",
+    "note": "Original black and white JAMAC Jakub Maciejek logo. Preserve aspect ratio. header-sized logo.jpg also included."
+  },
+  "hero": {
+    "preferred": "press-2458.jpg",
+    "alternatives": [
+      "press-2460.jpg",
+      "press-2461.jpg"
+    ],
+    "name": "Prasa transferowa SCHULZE Clam Press Slide 38 × 45 cm",
+    "product_url": "https://jamac.pl/produkt/prasa-transferowa-schulze-clam-press-slide-38-x-45-cm/",
+    "source_url": "https://jamac.pl/wp-content/uploads/2025/02/1.jpg",
+    "price_net": null,
+    "note": "Clean white-background original product photograph, 1464×2000. Product page has no displayed price. Do not associate with Swing price."
+  },
+  "assets": [
+    {
+      "file": "logo.jpg",
+      "source_url": "https://jamac.pl/wp-content/uploads/2020/04/xcropped-cropped-cropped-jamac_logo_puste-e1587822424787.jpg.pagespeed.ic.fFt2nopGtD.jpg",
+      "width": 220,
+      "height": 60,
+      "bytes": 4793,
+      "unchanged_original": true
+    },
+    {
+      "file": "dtf-white.jpg",
+      "source_url": "https://jamac.pl/wp-content/uploads/2023/02/White-1.jpg",
+      "width": 283,
+      "height": 283,
+      "bytes": 27065,
+      "unchanged_original": true
+    },
+    {
+      "file": "dtf-cyan.jpg",
+      "source_url": "https://jamac.pl/wp-content/uploads/2023/02/Cyan2-1.jpg",
+      "width": 283,
+      "height": 283,
+      "bytes": 29819,
+      "unchanged_original": true
+    },
+    {
+      "file": "dtf-powder.jpg",
+      "source_url": "https://jamac.pl/wp-content/uploads/2023/02/proszek_white.jpg",
+      "width": 296,
+      "height": 383,
+      "bytes": 39467,
+      "unchanged_original": true
+    },
+    {
+      "file": "dtf-film.jpg",
+      "source_url": "https://jamac.pl/wp-content/uploads/2023/02/folia_DTF.jpg",
+      "width": 425,
+      "height": 334,
+      "bytes": 127883,
+      "unchanged_original": true
+    },
+    {
+      "file": "service.jpg",
+      "source_url": "https://jamac.pl/wp-content/uploads/2022/11/naprawa_pras-1-1024x1006.jpg",
+      "width": 1024,
+      "height": 1006,
+      "bytes": 89493,
+      "unchanged_original": true
+    },
+    {
+      "file": "about.jpg",
+      "source_url": "https://jamac.pl/wp-content/uploads/2024/03/ja_new.jpg",
+      "width": 1181,
+      "height": 839,
+      "bytes": 333491,
+      "unchanged_original": true
+    },
+    {
+      "file": "rental-press.jpg",
+      "source_url": "https://jamac.pl/wp-content/uploads/2022/03/IMG_20220327_122224-scaled.jpg",
+      "width": 1920,
+      "height": 2560,
+      "bytes": 503387,
+      "unchanged_original": true
+    },
+    {
+      "file": "rental-plotter.jpg",
+      "source_url": "https://jamac.pl/wp-content/uploads/2020/03/IMG_20220109_190709-scaled.jpg",
+      "width": 2560,
+      "height": 1920,
+      "bytes": 1075644,
+      "unchanged_original": true
+    },
+    {
+      "file": "swing.jpg",
+      "source_url": "https://jamac.pl/wp-content/uploads/2025/11/prasa-Swing.jpg",
+      "width": 425,
+      "height": 567,
+      "bytes": 250404,
+      "unchanged_original": true
+    },
+    {
+      "file": "bluepress.jpg",
+      "source_url": "https://jamac.pl/wp-content/uploads/2025/10/prasa-Schulze.jpg",
+      "width": 425,
+      "height": 567,
+      "bytes": 239732,
+      "unchanged_original": true
+    },
+    {
+      "file": "gcc.jpg",
+      "source_url": "https://jamac.pl/wp-content/uploads/2025/11/ploter-GCC.jpg",
+      "width": 425,
+      "height": 567,
+      "bytes": 265313,
+      "unchanged_original": true
+    },
+    {
+      "file": "flex-red.jpg",
+      "source_url": "https://jamac.pl/wp-content/uploads/2020/05/flex08.jpg",
+      "width": 444,
+      "height": 444,
+      "bytes": 17709,
+      "unchanged_original": true
+    },
+    {
+      "file": "flock-blue.jpg",
+      "source_url": "https://jamac.pl/wp-content/uploads/2020/05/flock_royalblue_300.jpg",
+      "width": 444,
+      "height": 444,
+      "bytes": 22131,
+      "unchanged_original": true
+    },
+    {
+      "file": "dtf-folia.jpg",
+      "source_url": "https://jamac.pl/wp-content/uploads/2023/02/folia_DTF.jpg",
+      "width": 425,
+      "height": 334,
+      "bytes": 127883,
+      "unchanged_original": true
+    },
+    {
+      "file": "bluepress-wide.jpg",
+      "source_url": "https://jamac.pl/wp-content/uploads/2025/10/prasa-do-nadrukow.jpg",
+      "width": 856,
+      "height": 567,
+      "bytes": 449124,
+      "unchanged_original": true
+    },
+    {
+      "file": "swing-wide.jpg",
+      "source_url": "https://jamac.pl/wp-content/uploads/2025/11/prasa-termotransferowa.jpg",
+      "width": 567,
+      "height": 432,
+      "bytes": 250226,
+      "unchanged_original": true
+    },
+    {
+      "file": "accessory.jpg",
+      "source_url": "https://jamac.pl/wp-content/uploads/2026/02/xkomplet-plyt-do-czapek-300x300.jpg.pagespeed.ic.5UReIb2Hqp.jpg",
+      "width": 300,
+      "height": 300,
+      "bytes": 14306,
+      "unchanged_original": true
+    },
+    {
+      "file": "logo-hq.jpg",
+      "source_url": "https://jamac.pl/wp-content/uploads/2020/04/cropped-jamac_logo_puste.jpg",
+      "width": 1053,
+      "height": 289,
+      "bytes": 45616,
+      "unchanged_original": true
+    },
+    {
+      "file": "flex-photo.jpg",
+      "source_url": "https://jamac.pl/wp-content/uploads/2022/01/1501-scaled.jpg",
+      "width": 2560,
+      "height": 1185,
+      "bytes": 511478,
+      "unchanged_original": true
+    },
+    {
+      "file": "flock-photo.jpg",
+      "source_url": "https://jamac.pl/wp-content/uploads/2020/05/IMG_20211216_170908-scaled.jpg",
+      "width": 1920,
+      "height": 2560,
+      "bytes": 531456,
+      "unchanged_original": true
+    },
+    {
+      "file": "press-2463.jpg",
+      "source_url": "https://jamac.pl/wp-content/uploads/2025/02/7-bez-napisow.jpg",
+      "width": 1464,
+      "height": 2000,
+      "bytes": 615729,
+      "unchanged_original": true
+    },
+    {
+      "file": "press-2461.jpg",
+      "source_url": "https://jamac.pl/wp-content/uploads/2025/02/4-bez-napisow.jpg",
+      "width": 1464,
+      "height": 2000,
+      "bytes": 573139,
+      "unchanged_original": true
+    },
+    {
+      "file": "press-2460.jpg",
+      "source_url": "https://jamac.pl/wp-content/uploads/2025/02/3-bez-napisow.jpg",
+      "width": 1464,
+      "height": 2000,
+      "bytes": 836904,
+      "unchanged_original": true
+    },
+    {
+      "file": "press-2458.jpg",
+      "source_url": "https://jamac.pl/wp-content/uploads/2025/02/1.jpg",
+      "width": 1464,
+      "height": 2000,
+      "bytes": 584690,
+      "unchanged_original": true
+    }
+  ],
+  "products": [
+    {
+      "id": "dtf-white",
+      "name": "Tusz do druku DTF White 1 litr",
+      "price_net": 189,
+      "currency": "PLN",
+      "image": "dtf-white.jpg",
+      "url": "https://jamac.pl/produkt/tusz-do-druku-dtf-white-1-litr/",
+      "category": "DTF",
+      "unit": "1 litr"
+    },
+    {
+      "id": "dtf-film",
+      "name": "Folia do druku DTF szer. 60 cm × 100 m",
+      "price_net": 289,
+      "currency": "PLN",
+      "image": "dtf-film.jpg",
+      "url": "https://jamac.pl/produkt/folia-do-druku-dtf-szer-60cm-x-100m/",
+      "category": "DTF",
+      "unit": "rolka 60 cm × 100 m"
+    },
+    {
+      "id": "dtf-powder",
+      "name": "Proszek do druku DTF biały 1 kg",
+      "price_net": 69,
+      "currency": "PLN",
+      "image": "dtf-powder.jpg",
+      "url": "https://jamac.pl/produkt/proszek-do-druku-dtf-bialy-1kg/",
+      "category": "DTF",
+      "unit": "1 kg"
+    },
+    {
+      "id": "flex-red",
+      "name": "Folia flex Nova-Flex Premium 1000, kolor czerwony 08",
+      "price_net": 27,
+      "currency": "PLN",
+      "image": "flex-red.jpg",
+      "url": "https://jamac.pl/produkt/folia-flex-nova-flex-premium-1000-kolor-czerwony-08/",
+      "category": "Folie flex",
+      "note": "Original product image is a flat red swatch with number 08."
+    },
+    {
+      "id": "flock-blue",
+      "name": "Folia flock royal blue 300",
+      "price_net": 48,
+      "currency": "PLN",
+      "image": "flock-blue.jpg",
+      "url": "https://jamac.pl/produkt/folia-flock-royal-blue-300/",
+      "category": "Folie flock",
+      "unit": "1 mb, szerokość 50 cm",
+      "note": "Original product image is a flat blue swatch with number 300."
+    },
+    {
+      "id": "swing",
+      "name": "Prasa transferowa Schulze Blue Swing Press 40 × 50 cm",
+      "price_net": 4390,
+      "currency": "PLN",
+      "image": "swing.jpg",
+      "url": "https://jamac.pl/produkt/prasa-transferowa-schulze-blue-swing-press-blue-pressline-swing-40x50-cm/",
+      "category": "Prasy transferowe",
+      "condition": "używana",
+      "warranty": "6 miesięcy"
+    },
+    {
+      "id": "gcc",
+      "name": "Ploter tnący GCC Puma III 60 cm",
+      "price_net": 3290,
+      "currency": "PLN",
+      "image": "gcc.jpg",
+      "url": "https://jamac.pl/produkt/ploter-tnacy-gcc-puma-iii-60-cm-ciecie-po-obrysie-po-konturze/",
+      "category": "Plotery",
+      "condition": "używany",
+      "warranty": "6 miesięcy"
+    },
+    {
+      "id": "accessory",
+      "name": "Komplet płyt roboczych do nadruku na czapkach",
+      "price_net": 1420,
+      "currency": "PLN",
+      "image": "accessory.jpg",
+      "url": "https://jamac.pl/produkt/komplet-plyt-do-czapek/",
+      "category": "Akcesoria"
+    }
+  ],
+  "categories": [
+    {
+      "name": "DTF",
+      "url": "https://jamac.pl/kategoria-produktu/dtf/",
+      "image": "dtf-film.jpg"
+    },
+    {
+      "name": "Folie flex",
+      "url": "https://jamac.pl/kategoria-produktu/folie-flex-kolory-podstawowe/",
+      "image": "flex-red.jpg",
+      "alternative_image": "flex-photo.jpg"
+    },
+    {
+      "name": "Folie flock",
+      "url": "https://jamac.pl/kategoria-produktu/folie-flock/",
+      "image": "flock-blue.jpg",
+      "alternative_image": "flock-photo.jpg",
+      "note": "Alternative is a real textile print example from JAMAC media, not the royal-blue product."
+    },
+    {
+      "name": "Prasy transferowe",
+      "url": "https://jamac.pl/kategoria-produktu/prasy-transferowe/",
+      "image": "press-2458.jpg"
+    },
+    {
+      "name": "Plotery",
+      "url": "https://jamac.pl/kategoria-produktu/plotery-tnace/",
+      "image": "gcc.jpg"
+    },
+    {
+      "name": "Akcesoria",
+      "url": "https://jamac.pl/kategoria-produktu/prasy-transferowe/akcesoria/",
+      "image": "accessory.jpg"
+    }
+  ],
+  "links": {
+    "shop": "https://jamac.pl/sklep/",
+    "service": "https://jamac.pl/serwis-pras-transferowych-serwis-ploterow-tnacych/",
+    "rental": "https://jamac.pl/wypozyczanie-sprzetu/",
+    "contact": "https://jamac.pl/contact/",
+    "about": "https://jamac.pl/o-nas/",
+    "sublimation": "https://jamac.pl/kategoria-produktu/papiery-transferowe/do-sublimacji/",
+    "printers": "https://jamac.pl/kategoria-produktu/drukarki/",
+    "flex_flock": "https://jamac.pl/kategoria-produktu/folie-flex-flock/"
+  },
+  "contact": {
+    "company": "JAMAC Jakub Maciejek",
+    "phone_display": "694 205 790",
+    "phone_uri": "tel:+48694205790",
+    "email": "jakubmaciejek@gmail.com",
+    "office_address": "Powiatowe Centrum Animacji Społecznej, ul. Farbiarska 20/24, 97-200 Tomaszów Mazowiecki",
+    "registration_address": "ul. Benniego 7/24, 97-200 Tomaszów Mazowiecki",
+    "nip": "7711052012",
+    "source_url": "https://jamac.pl/o-nas/"
+  },
+  "notes": [
+    "Prices are a static snapshot of displayed net PLN prices, not live inventory.",
+    "Do not label every product in stock unless separately verified.",
+    "swing-wide.jpg and bluepress-wide.jpg are rating-plate closeups and unsuitable for hero.",
+    "service.jpg is a real repair-detail photo.",
+    "No assets generated, redrawn or modified.",
+    "The demo uses resized WebP derivatives of the originals; logo is unchanged. No generated or redrawn product imagery. Prices are a 2026-11-19 snapshot."
+  ],
+  "web_refs": {
+    "about": "turn309537171view0",
+    "swing": "turn309537171view1",
+    "dtf_film": "turn309537171view2"
+  }
+}
